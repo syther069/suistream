@@ -23,16 +23,10 @@ export function MediaCard({ item }: { item: MediaContent }) {
         />
         <div className="absolute inset-0 flex items-end bg-gradient-to-t from-background/90 via-transparent to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
           <div className="flex flex-wrap gap-2">
-            {item.isDemo ? <Badge tone="warning">Demo</Badge> : null}
             <Badge tone="primary">Walrus</Badge>
             <Badge>AI Tagged</Badge>
           </div>
         </div>
-        {item.isDemo ? (
-          <div className="absolute left-3 top-3">
-            <Badge tone="warning">Demo</Badge>
-          </div>
-        ) : null}
       </Link>
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
@@ -54,14 +48,12 @@ export function MediaCard({ item }: { item: MediaContent }) {
         <TagList tags={item.tags.slice(0, 3)} dense />
         <div className="flex items-center justify-between border-t border-outline-soft pt-3">
           <span className="font-mono text-xs text-on-muted">
-            {item.isDemo ? "Demo preview" : shortenAddress(item.suiObjectId)}
+            {shortenAddress(item.suiObjectId)}
           </span>
           <TipButton
             creator={item.creator}
-            contentObjectId={item.isDemo ? undefined : item.suiObjectId}
+            contentObjectId={item.suiObjectId}
             compact
-            disabled={item.isDemo}
-            disabledReason="Tipping not available on demo content"
           />
         </div>
       </div>

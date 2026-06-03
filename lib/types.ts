@@ -17,7 +17,6 @@ export type MediaContent = {
   suiObjectId: string;
   mintTxId: string;
   safetyScore: number;
-  isDemo: boolean;
 };
 
 export type AiAnalysis = {
