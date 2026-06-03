@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
     if (!(image instanceof File)) {
       return NextResponse.json(
-        { error: "An image file is required." },
+        { error: "Invalid file: An image file is required." },
         { status: 400 }
       );
     }
@@ -24,18 +24,37 @@ export async function POST(request: NextRequest) {
       description: typeof description === "string" ? description : undefined
     });
 
-    if (!analysis) {
-      return NextResponse.json(
-        { error: "AI analysis temporarily unavailable" },
-        { status: 503 }
-      );
+    return NextResponse.json(analysis);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "AI analysis failed unexpectedly.";
+    console.error("[Moderate Route Error]:", error);
+
+    // Determine appropriate status code and message
+    let status = 502; // Bad Gateway for third-party API issues
+    let errorType = "OpenAI request failed";
+
+    const errStatus = error && typeof error === "object" && "status" in error
+      ? (error as { status: number }).status
+      : undefined;
+
+    if (errorMessage.includes("OpenAI API key missing")) {
+      status = 500;
+      errorType = "OpenAI API key missing";
+    } else if (errStatus === 429 || errorMessage.includes("quota") || errorMessage.includes("429")) {
+      status = 429;
+      errorType = "OpenAI quota exceeded";
+    } else if (errStatus === 401 || errorMessage.includes("incorrect api key")) {
+      status = 401;
+      errorType = "OpenAI authentication failed";
     }
 
-    return NextResponse.json(analysis);
-  } catch {
     return NextResponse.json(
-      { error: "AI analysis temporarily unavailable" },
-      { status: 503 }
+      {
+        error: errorType,
+        details: errorMessage
+      },
+      { status }
     );
   }
 }
+

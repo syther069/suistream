@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import type { AiAnalysis, ModerationStatus } from "@/lib/types";
 
 function isModerationStatus(value: unknown): value is ModerationStatus {
@@ -86,76 +87,85 @@ export async function analyzeImage(input: {
   mediaType: string;
   title?: string;
   description?: string;
-}): Promise<AiAnalysis | null> {
+}): Promise<AiAnalysis> {
   const openaiApiKey = process.env.OPENAI_API_KEY;
+  console.log(`[AI] API key detected: ${!!openaiApiKey}`);
 
   if (!openaiApiKey) {
-    console.error("OPENAI_API_KEY is not configured.");
-    return null;
+    const errorMsg = "OpenAI API key missing";
+    console.error(`[AI] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const model = "gpt-4o";
+  console.log(`[AI] Model being used: ${model}`);
+
+  const openai = new OpenAI({ apiKey: openaiApiKey });
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json"
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: "gpt-4o",
-        response_format: { type: "json_object" },
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: buildPrompt({
-                  title: input.title,
-                  description: input.description
-                })
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${input.mediaType};base64,${input.imageBase64}`
-                }
+    const response = await openai.chat.completions.create({
+      model,
+      response_format: { type: "json_object" },
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: buildPrompt({
+                title: input.title,
+                description: input.description
+              })
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${input.mediaType};base64,${input.imageBase64}`
               }
-            ]
-          }
-        ]
-      })
+            }
+          ]
+        }
+      ]
+    }, {
+      timeout: 30_000
     });
 
-    if (!response.ok) {
-      console.error(
-        `OpenAI API returned status ${response.status}:`,
-        await response.text()
-      );
-      return null;
-    }
-
-    const payload = await response.json();
-    const messageContent = payload.choices?.[0]?.message?.content;
+    console.log("[AI] Request success");
+    const messageContent = response.choices?.[0]?.message?.content;
 
     if (!messageContent) {
-      return null;
+      const errorMsg = "OpenAI returned an empty response content.";
+      console.error(`[AI] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
-    return toAiAnalysis(JSON.parse(extractJson(messageContent)));
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.error("OpenAI API request timed out after 30 seconds.");
-    } else {
-      console.error("Failed to parse OpenAI moderation response:", error);
+    const parsed = toAiAnalysis(JSON.parse(extractJson(messageContent)));
+    if (!parsed) {
+      const errorMsg = "Failed to map OpenAI response to structured AI analysis format.";
+      console.error(`[AI] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
-    return null;
-  } finally {
-    clearTimeout(timeout);
+
+    return parsed;
+  } catch (error: unknown) {
+    console.error("[AI] Request failure");
+    const errStatus = error && typeof error === "object" && "status" in error
+      ? (error as { status: number }).status
+      : undefined;
+    const errMessage = error && typeof error === "object" && "message" in error
+      ? (error as { message: string }).message
+      : undefined;
+
+    if (errStatus) {
+      console.error(`[AI] OpenAI API error response: Status ${errStatus}`);
+    }
+    if (errMessage) {
+      console.error(`[AI] OpenAI error message: ${errMessage}`);
+    } else {
+      console.error("[AI] OpenAI error detail:", error);
+    }
+    throw error;
   }
 }
+
