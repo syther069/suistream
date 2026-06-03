@@ -1,0 +1,86 @@
+export type ModerationStatus = "approved" | "flagged";
+
+export type MediaContent = {
+  id: string;
+  title: string;
+  description: string;
+  creator: string;
+  creatorAddress: string;
+  createdAt: string;
+  imageUrl: string;
+  aspect: "portrait" | "landscape" | "square";
+  tags: string[];
+  moderationStatus: ModerationStatus;
+  contentHash: string;
+  mediaBlobId: string;
+  metadataBlobId: string;
+  suiObjectId: string;
+  mintTxId: string;
+  safetyScore: number;
+  isDemo: boolean;
+};
+
+export type AiAnalysis = {
+  tags: string[];
+  description: string;
+  safetyScore: number;
+  moderationStatus: ModerationStatus;
+};
+
+export type UploadedContentMetadata = {
+  title: string;
+  description: string;
+  creator: string;
+  createdAt: string;
+  tags: string[];
+  moderationStatus: ModerationStatus;
+  contentHash: string;
+  mediaSizeBytes: number;
+  metadataSizeBytes: number;
+  safetyScore: number;
+};
+
+export type WalrusUploadResult = {
+  mediaBlobId: string;
+  metadataBlobId: string;
+  mediaSizeBytes: number;
+  metadataSizeBytes: number;
+};
+
+export type OwnedContent = {
+  id: string;
+  title: string;
+  description: string;
+  creatorAddress: string;
+  createdAt: string;
+  imageUrl: string;
+  tags: string[];
+  moderationStatus: ModerationStatus;
+  contentHash: string;
+  mediaBlobId: string;
+  metadataBlobId: string;
+  suiObjectId: string;
+  safetyScore: number;
+  storageBytes: number;
+};
+
+export type TipEvent = {
+  digest: string;
+  amountMist: string;
+  timestampMs: string | null;
+};
+
+export type RevenuePoint = {
+  label: string;
+  amountMist: string;
+};
+
+export type DashboardData = {
+  totalEarningsMist: string;
+  storageUsedBytes: number;
+  storageQuotaBytes: number;
+  storagePercent: number;
+  revenue: RevenuePoint[];
+  recentTips: TipEvent[];
+  ownedContent: OwnedContent[];
+};

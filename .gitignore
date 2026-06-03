@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+
+.env
+.env.local
+.env.*.local
+
+tsconfig.tsbuildinfo
+
+_stitch_reference/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Optional additions
+coverage/
+.DS_Store
+.idea/
+.vscode/
+*.pem
+*.key
