@@ -24,7 +24,6 @@ NEXT_PUBLIC_SUI_NETWORK=mainnet
 NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
 NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 NEXT_PUBLIC_PACKAGE_ID=TODO_REDEPLOY_TO_MAINNET
-NEXT_PUBLIC_REGISTRY_ID=TODO_REDEPLOY_TO_MAINNET
 ```
 
 `TATUM_API_KEY` stays server-side. Browser wallet RPC requests go through:
@@ -97,6 +96,5 @@ Important: redeploy the Move package to Sui mainnet before production use, then 
 
 ```txt
 NEXT_PUBLIC_PACKAGE_ID=YOUR_MAINNET_PACKAGE_ID
-NEXT_PUBLIC_REGISTRY_ID=YOUR_MAINNET_REGISTRY_ID
 ```
 # suistream

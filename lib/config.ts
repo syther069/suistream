@@ -8,11 +8,9 @@ export const WALRUS_AGGREGATOR_URL =
 export const WALRUS_PUBLISHER_URL =
   process.env.NEXT_PUBLIC_WALRUS_PUBLISHER ?? "https://publisher.walrus.space";
 
-// TODO: Redeploy the SuiStream Move package to Sui mainnet and replace these
-// placeholders with the mainnet package and registry object IDs.
+// TODO: Redeploy the SuiStream Move package to Sui mainnet and replace this
+// placeholder with the mainnet package ID.
 export const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID ?? "";
-
-export const REGISTRY_ID = process.env.NEXT_PUBLIC_REGISTRY_ID ?? "";
 
 export const SUI_EXPLORER_BASE_URL = "https://suiexplorer.com";
 

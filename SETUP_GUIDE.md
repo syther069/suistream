@@ -27,7 +27,6 @@ NEXT_PUBLIC_SUI_NETWORK=mainnet
 NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
 NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 NEXT_PUBLIC_PACKAGE_ID=TODO_REDEPLOY_TO_MAINNET
-NEXT_PUBLIC_REGISTRY_ID=TODO_REDEPLOY_TO_MAINNET
 ```
 
 Do not put real secrets in `.env.example`.
@@ -301,7 +300,6 @@ Steps:
 [ ] Set NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 [ ] Deploy Move package to Sui mainnet
 [ ] Add NEXT_PUBLIC_PACKAGE_ID
-[ ] Add NEXT_PUBLIC_REGISTRY_ID
 [ ] Connect wallet
 [ ] Upload media
 [ ] Verify Walrus upload
@@ -333,5 +331,4 @@ Publish to mainnet, then update:
 
 ```txt
 NEXT_PUBLIC_PACKAGE_ID=YOUR_MAINNET_PACKAGE_ID
-NEXT_PUBLIC_REGISTRY_ID=YOUR_MAINNET_REGISTRY_ID
 ```

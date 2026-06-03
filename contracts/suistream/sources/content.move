@@ -1,6 +1,6 @@
 module suistream::content {
     // TODO: Redeploy this package to Sui mainnet and update
-    // NEXT_PUBLIC_PACKAGE_ID / NEXT_PUBLIC_REGISTRY_ID in .env.local.
+    // NEXT_PUBLIC_PACKAGE_ID in .env.local.
     use std::string::String;
     use sui::clock::Clock;
     use sui::coin::{Self, Coin};
