@@ -23,4 +23,4 @@ coverage/
 .idea/
 .vscode/
 *.pem
-*.key
+*.keysui-cli/
