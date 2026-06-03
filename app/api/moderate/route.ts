@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeImage } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
+  console.log("[Moderate Route] Request received");
   try {
     const formData = await request.formData();
     const image = formData.get("image");
@@ -34,16 +35,44 @@ export async function POST(request: NextRequest) {
     let errorType = "OpenAI request failed";
 
     const errStatus = error && typeof error === "object" && "status" in error
-      ? (error as { status: number }).status
+      ? (error as { status: unknown }).status
+      : undefined;
+    const errStatusCode = error && typeof error === "object" && "statusCode" in error
+      ? (error as { statusCode: unknown }).statusCode
+      : undefined;
+    const errCode = error && typeof error === "object" && "code" in error
+      ? (error as { code: unknown }).code
       : undefined;
 
-    if (errorMessage.includes("OpenAI API key missing")) {
+    const isMissingKey =
+      errorMessage.includes("OpenAI API key missing") ||
+      errorMessage.includes("API key detected: false");
+
+    const is429 =
+      errStatus === 429 ||
+      errStatusCode === 429 ||
+      errCode === "rate_limit_exceeded" ||
+      errCode === "insufficient_quota" ||
+      errorMessage.toLowerCase().includes("quota") ||
+      errorMessage.toLowerCase().includes("429") ||
+      errorMessage.toLowerCase().includes("rate limit") ||
+      errorMessage.toLowerCase().includes("too many requests");
+
+    const is401 =
+      errStatus === 401 ||
+      errStatusCode === 401 ||
+      errCode === "invalid_api_key" ||
+      errorMessage.toLowerCase().includes("incorrect api key") ||
+      errorMessage.toLowerCase().includes("authentication") ||
+      errorMessage.toLowerCase().includes("401");
+
+    if (isMissingKey) {
       status = 500;
       errorType = "OpenAI API key missing";
-    } else if (errStatus === 429 || errorMessage.includes("quota") || errorMessage.includes("429")) {
+    } else if (is429) {
       status = 429;
       errorType = "OpenAI quota exceeded";
-    } else if (errStatus === 401 || errorMessage.includes("incorrect api key")) {
+    } else if (is401) {
       status = 401;
       errorType = "OpenAI authentication failed";
     }

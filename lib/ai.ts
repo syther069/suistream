@@ -131,7 +131,7 @@ export async function analyzeImage(input: {
       timeout: 30_000
     });
 
-    console.log("[AI] Request success");
+    console.log("[AI] OpenAI response received successfully");
     const messageContent = response.choices?.[0]?.message?.content;
 
     if (!messageContent) {
@@ -151,20 +151,15 @@ export async function analyzeImage(input: {
   } catch (error: unknown) {
     console.error("[AI] Request failure");
     const errStatus = error && typeof error === "object" && "status" in error
-      ? (error as { status: number }).status
+      ? (error as { status: unknown }).status
       : undefined;
-    const errMessage = error && typeof error === "object" && "message" in error
-      ? (error as { message: string }).message
-      : undefined;
+    const errMessage = error instanceof Error
+      ? error.message
+      : error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
 
-    if (errStatus) {
-      console.error(`[AI] OpenAI API error response: Status ${errStatus}`);
-    }
-    if (errMessage) {
-      console.error(`[AI] OpenAI error message: ${errMessage}`);
-    } else {
-      console.error("[AI] OpenAI error detail:", error);
-    }
+    console.error(`[AI] Error details: Status ${errStatus || "unknown"}, Message: ${errMessage}`);
     throw error;
   }
 }
