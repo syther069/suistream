@@ -99,3 +99,4 @@ Important: redeploy the Move package to Sui mainnet before production use, then 
 NEXT_PUBLIC_PACKAGE_ID=YOUR_MAINNET_PACKAGE_ID
 NEXT_PUBLIC_REGISTRY_ID=YOUR_MAINNET_REGISTRY_ID
 ```
+# suistream
