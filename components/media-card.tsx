@@ -1,52 +1,12 @@
 "use client";
 
-import { ImageOff } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { TagList } from "@/components/tag-list";
 import { TipModal } from "@/components/TipModal";
 import type { MediaContent } from "@/lib/types";
 import { cn, shortenAddress } from "@/lib/utils";
 
-function WalrusImage({
-  blobId,
-  alt,
-  className
-}: {
-  blobId: string;
-  alt: string;
-  className?: string;
-}) {
-  if (!blobId) {
-    return (
-      <div
-        className={cn(
-          "flex h-full w-full flex-col items-center justify-center gap-2 bg-surface-high text-on-muted",
-          className
-        )}
-      >
-        <ImageOff className="h-8 w-8 opacity-40" />
-        <span className="text-[10px] opacity-50">No image</span>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={`https://aggregator.walrus.space/v1/${blobId}`}
-      alt={alt}
-      className={className}
-      style={{
-        width: "100%",
-        height: "220px",
-        objectFit: "cover",
-        borderRadius: "8px 8px 0 0"
-      }}
-      onError={(event) => {
-        event.currentTarget.style.display = "none";
-      }}
-    />
-  );
-}
 
 export function MediaCard({ item }: { item: MediaContent }) {
   return (
@@ -57,10 +17,11 @@ export function MediaCard({ item }: { item: MediaContent }) {
           item.aspect === "portrait" ? "aspect-[3/4]" : "aspect-[4/3]"
         )}
       >
-        <WalrusImage
-          blobId={item.mediaBlobId}
+        <img
+          src={`https://aggregator.walrus.space/v1/${item.mediaBlobId}`}
           alt={item.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          style={{ width:'100%', height:'220px', objectFit:'cover', borderRadius:'8px 8px 0 0' }}
+          onError={(e) => { e.currentTarget.style.display='none' }}
         />
         <div className="absolute inset-0 flex items-end bg-gradient-to-t from-background/90 via-transparent to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
           <div className="flex flex-wrap gap-2">

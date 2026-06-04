@@ -82,12 +82,12 @@ function mapContentCreatedEvent(
     stringValue(fields.content_id) ||
     stringValue(fields.contentId) ||
     stringValue(fields.id);
-  const mediaBlobId = stringValue(fields.media_blob_id);
+  const blobId = stringValue(fields.media_blob_id);
   console.log(
     "FEED ITEM blobId:",
-    mediaBlobId,
+    blobId,
     "URL:",
-    `https://aggregator.walrus.space/v1/${mediaBlobId}`
+    `https://aggregator.walrus.space/v1/${blobId}`
   );
   const metadataBlobId =
     stringValue(fields.metadata_blob_id) ||
@@ -120,9 +120,7 @@ function mapContentCreatedEvent(
     creator: creator.slice(0, 10),
     creatorAddress: creator,
     createdAt: new Date(numberValue(timestamp)).toISOString(),
-    imageUrl: mediaBlobId
-      ? `https://aggregator.walrus.space/v1/${mediaBlobId}`
-      : null,
+    imageUrl: `https://aggregator.walrus.space/v1/${blobId}`,
     aspect: "landscape",
     tags: stringArrayValue(meta.tags || fields.tags),
     moderationStatus: moderationStatusValue(
@@ -130,7 +128,7 @@ function mapContentCreatedEvent(
     ),
     contentHash:
       stringValue(fields.content_hash) || stringValue(fields.contentHash),
-    mediaBlobId,
+    mediaBlobId: blobId,
     metadataBlobId,
     suiObjectId: objectId,
     mintTxId: event.id?.txDigest ?? "",
