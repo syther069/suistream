@@ -6,11 +6,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "aggregator.walrus.space"
+        hostname: "aggregator.walrus.space",
+        pathname: "/v1/**"
       },
       {
         protocol: "https",
-        hostname: "aggregator.walrus-testnet.walrus.space"
+        hostname: "aggregator.walrus.space",
+        pathname: "/v1/**"
       }
     ]
   }
