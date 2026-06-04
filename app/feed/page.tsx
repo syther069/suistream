@@ -45,7 +45,7 @@ function numberValue(value: unknown) {
 
 function stringArrayValue(value: unknown) {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
+    ? value.filter((item: MediaContent | null): item is string => typeof item === "string")
     : [];
 }
 
@@ -147,7 +147,7 @@ export default function FeedPage() {
       });
       const mapped = response.data
         .map((event: FeedEvent) => mapContentCreatedEvent(event as FeedEvent))
-        .filter((item): item is MediaContent => item !== null);
+        .filter((item: MediaContent | null): item is MediaContent => item !== null);
 
       setItems(mapped);
     } catch (caught) {
