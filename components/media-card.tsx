@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TagList } from "@/components/tag-list";
@@ -17,8 +16,6 @@ function WalrusImage({
   alt: string;
   className?: string;
 }) {
-  const [errored, setErrored] = useState(false);
-
   if (!src) {
     return (
       <div
@@ -33,19 +30,14 @@ function WalrusImage({
     );
   }
 
-  if (errored) {
-    return null;
-  }
-
   return (
     <img
       src={src}
       alt={alt}
       className={className}
-      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      style={{ width: "100%", height: "200px", objectFit: "cover" }}
       onError={(event) => {
         event.currentTarget.style.display = "none";
-        setErrored(true);
       }}
     />
   );

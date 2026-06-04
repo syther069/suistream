@@ -71,7 +71,7 @@ function blobUrl(blobIdOrUrl: string) {
     return blobIdOrUrl;
   }
 
-  return `https://aggregator.walrus.space/v1/${blobIdOrUrl}`;
+  return `https://aggregator.walrus.space/v1/blobs/${blobIdOrUrl}`;
 }
 
 function blobIdFromFields(fields: Record<string, unknown>) {
@@ -99,7 +99,7 @@ function mapContentCreatedEvent(
 ): MediaContent | null {
   const eventFields = event.parsedJson || {};
 
-  console.log("RAW EVENT:", JSON.stringify(event.parsedJson, null, 2));
+  console.log("FULL PARSED JSON:", JSON.stringify(event.parsedJson));
 
   const fields = { ...eventFields, ...(objFields || {}) };
   const meta = metadata || {};
