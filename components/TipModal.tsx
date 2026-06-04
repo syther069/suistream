@@ -10,7 +10,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { CheckCircle2, ExternalLink, HandCoins, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PACKAGE_ID, getSuiExplorerTransactionUrl } from "@/lib/config";
+import { getSuiExplorerTransactionUrl } from "@/lib/config";
 import { cn, shortenAddress } from "@/lib/utils";
 
 type TokenSymbol = "SUI" | "WAL" | "USDC";
@@ -94,6 +94,73 @@ function smallestUnitsFromTokenAmount(tokenAmount: number, decimals: number) {
   return BigInt(Math.ceil(tokenAmount * 10 ** decimals));
 }
 
+/**
+ * Build a direct SUI transfer: split from gas coin, transfer to creator.
+ * No contract interaction — just a plain coin transfer.
+ */
+function buildSuiTransferTransaction(input: {
+  creatorAddress: string;
+  amount: bigint;
+}) {
+  const tx = new Transaction();
+
+  // Split the exact tip amount from the gas coin
+  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(input.amount)]);
+
+  // Transfer directly to the creator's wallet address
+  tx.transferObjects([coin], tx.pure.address(input.creatorAddress));
+
+  return tx;
+}
+
+/**
+ * Build a WAL/USDC transfer: fetch sender's coins of that type,
+ * merge if needed, split the exact amount, transfer to creator.
+ */
+function buildTokenTransferTransaction(input: {
+  creatorAddress: string;
+  amount: bigint;
+  coins: CoinBalance[];
+}) {
+  const tx = new Transaction();
+  const [primary, ...rest] = input.coins;
+
+  if (!primary) {
+    throw new Error("No spendable token coin found.");
+  }
+
+  const primaryCoin = tx.object(primary.coinObjectId);
+
+  // Merge all other coins into the primary one
+  if (rest.length) {
+    tx.mergeCoins(
+      primaryCoin,
+      rest.map((coin) => tx.object(coin.coinObjectId))
+    );
+  }
+
+  const total = input.coins.reduce(
+    (sum, coin) => sum + BigInt(coin.balance),
+    0n
+  );
+
+  // If the total exactly equals the amount, transfer the whole coin
+  if (total === input.amount) {
+    tx.transferObjects([primaryCoin], tx.pure.address(input.creatorAddress));
+    return tx;
+  }
+
+  // Otherwise split the exact amount and transfer the split coin
+  const [splitCoin] = tx.splitCoins(primaryCoin, [tx.pure.u64(input.amount)]);
+  tx.transferObjects([splitCoin], tx.pure.address(input.creatorAddress));
+
+  return tx;
+}
+
+/**
+ * Fetch enough coins of the given type owned by the sender to cover `amount`.
+ * Throws if insufficient balance.
+ */
 async function getSpendableCoins(input: {
   owner: string;
   coinType: string;
@@ -127,83 +194,8 @@ async function getSpendableCoins(input: {
     }
   }
 
-  throw new Error(`Insufficient ${input.coinType.split("::").at(-1) ?? "token"} balance.`);
-}
-
-function buildSuiTipTransaction(input: {
-  contentObjectId: string;
-  creatorAddress: string;
-  amount: bigint;
-}) {
-  if (!PACKAGE_ID) {
-    throw new Error("NEXT_PUBLIC_PACKAGE_ID is required before tipping.");
-  }
-
-  if (!input.contentObjectId || !input.contentObjectId.startsWith("0x")) {
-    throw new Error(
-      `Invalid content object ID: "${input.contentObjectId}". Cannot build tip transaction.`
-    );
-  }
-
-  if (!input.creatorAddress || !input.creatorAddress.startsWith("0x")) {
-    throw new Error(
-      `Invalid creator address: "${input.creatorAddress}". Cannot tip without a valid recipient.`
-    );
-  }
-
-  if (input.amount <= 0n) {
-    throw new Error("Tip amount must be greater than 0.");
-  }
-
-  const tx = new Transaction();
-
-  // Split the exact tip amount from gas coin
-  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(input.amount)]);
-
-  // Call the contract's tip_creator which internally transfers the coin to the creator
-  tx.moveCall({
-    target: `${PACKAGE_ID}::content::tip_creator`,
-    arguments: [tx.object(input.contentObjectId), coin]
-  });
-
-  return tx;
-}
-
-function buildDirectTransferTransaction(input: {
-  creatorAddress: string;
-  amount: bigint;
-  coins: CoinBalance[];
-}) {
-  const tx = new Transaction();
-  const [primary, ...rest] = input.coins;
-
-  if (!primary) {
-    throw new Error("No spendable token coin found.");
-  }
-
-  const primaryCoin = tx.object(primary.coinObjectId);
-
-  if (rest.length) {
-    tx.mergeCoins(
-      primaryCoin,
-      rest.map((coin) => tx.object(coin.coinObjectId))
-    );
-  }
-
-  const total = input.coins.reduce(
-    (sum, coin) => sum + BigInt(coin.balance),
-    0n
-  );
-
-  if (total === input.amount) {
-    tx.transferObjects([primaryCoin], tx.pure.address(input.creatorAddress));
-    return tx;
-  }
-
-  const [paymentCoin] = tx.splitCoins(primaryCoin, [tx.pure.u64(input.amount)]);
-  tx.transferObjects([paymentCoin], tx.pure.address(input.creatorAddress));
-
-  return tx;
+  const tokenName = input.coinType.split("::").at(-1) ?? "token";
+  throw new Error(`Insufficient ${tokenName} balance.`);
 }
 
 export function TipModal({
@@ -238,6 +230,10 @@ export function TipModal({
     label: string;
   } | null>(null);
 
+  // Keep contentObjectId referenced so ESLint doesn't flag it as unused
+  // (it's passed in but we no longer need it for the direct-transfer approach)
+  void contentObjectId;
+
   const token = useMemo(
     () => TOKENS.find((option) => option.symbol === selectedToken) ?? TOKENS[0],
     [selectedToken]
@@ -253,13 +249,10 @@ export function TipModal({
     if (numericUsd < MIN_USD) return "Minimum tip is $0.10.";
     if (numericUsd > MAX_USD) return "Maximum tip is $100.00.";
     if (!account) return "Connect a wallet to send a tip.";
-    if (selectedToken === "SUI" && !contentObjectId) {
-      return "A Sui content object is required before tipping.";
-    }
     if (!selectedPrice) return "Waiting for token price.";
 
     return null;
-  }, [account, contentObjectId, numericUsd, selectedPrice, selectedToken]);
+  }, [account, numericUsd, selectedPrice, selectedToken]);
 
   const loadPrice = useCallback(async (nextToken: TokenOption) => {
     if (nextToken.symbol === "USDC") {
@@ -307,39 +300,50 @@ export function TipModal({
       return;
     }
 
-    try {
-      if (!account?.address) {
-        throw new Error("Connect a wallet before sending a tip.");
-      }
+    // Validate creator address from on-chain data
+    if (!creatorAddress || !creatorAddress.startsWith("0x")) {
+      setError("Creator address not found. Cannot process tip.");
+      return;
+    }
 
+    if (!account?.address) {
+      setError("Connect a wallet before sending a tip.");
+      return;
+    }
+
+    const senderAddress = account.address;
+
+    // Log addresses for debugging — these must always be different
+    // when User B tips User A
+    console.log("Sending tip to creator:", creatorAddress);
+    console.log("Tipper wallet:", senderAddress);
+
+    try {
       const amount = smallestUnitsFromTokenAmount(tokenAmount, token.decimals);
 
-      if (process.env.NODE_ENV !== "production") {
-        console.debug("[TipModal] Building tip tx", {
-          token: token.symbol,
-          contentObjectId,
+      let transaction: Transaction;
+
+      if (token.symbol === "SUI") {
+        // SUI: split from gas coin and transfer directly to creator
+        transaction = buildSuiTransferTransaction({
           creatorAddress,
-          amount: amount.toString()
+          amount
+        });
+      } else {
+        // WAL / USDC: fetch coins, merge, split, transfer to creator
+        const coins = await getSpendableCoins({
+          owner: senderAddress,
+          coinType: token.coinType,
+          amount,
+          suiClient
+        });
+
+        transaction = buildTokenTransferTransaction({
+          creatorAddress,
+          amount,
+          coins
         });
       }
-
-      const transaction =
-        token.symbol === "SUI"
-          ? buildSuiTipTransaction({
-              contentObjectId: contentObjectId ?? "",
-              creatorAddress,
-              amount
-            })
-          : buildDirectTransferTransaction({
-              creatorAddress,
-              amount,
-              coins: await getSpendableCoins({
-                owner: account.address,
-                coinType: token.coinType,
-                amount,
-                suiClient
-              })
-            });
 
       const result = await signAndExecute.mutateAsync({
         transaction,
