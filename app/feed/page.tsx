@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { FeedGrid } from "@/components/feed-grid";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { PACKAGE_ID, WALRUS_AGGREGATOR_URL } from "@/lib/config";
-import { suiclient } from "@/lib/sui-client";
+import { useSuiClient } from "@mysten/dapp-kit";
 import type { MediaContent, ModerationStatus } from "@/lib/types";
 
 const categories = [
@@ -24,6 +24,16 @@ type FeedEvent = {
   };
   timestampMs?: string;
   parsedJson?: Record<string, unknown>;
+};
+
+type SuiObjectResponse = {
+  data?: {
+    objectId?: string;
+    type?: string;
+    content?: {
+      fields?: Record<string, unknown>;
+    };
+  };
 };
 
 function stringValue(value: unknown) {
@@ -54,15 +64,19 @@ function moderationStatusValue(value: unknown): ModerationStatus {
 }
 
 function blobUrl(blobId: string) {
-  return blobId ? `${WALRUS_AGGREGATOR_URL}/v1/blobs/${blobId}` : "";
+  if (!blobId) return "";
+  const base = WALRUS_AGGREGATOR_URL || "https://aggregator.walrus.space";
+  return `${base}/v1/${blobId}`;
 }
 
-function mapContentCreatedEvent(event: FeedEvent): MediaContent | null {
-  const fields = event.parsedJson;
-
-  if (!fields) {
-    return null;
-  }
+function mapContentCreatedEvent(
+  event: FeedEvent,
+  objFields?: Record<string, unknown> | null,
+  metadata?: Record<string, unknown> | null
+): MediaContent | null {
+  const eventFields = event.parsedJson || {};
+  const fields = { ...eventFields, ...(objFields || {}) };
+  const meta = metadata || {};
 
   const objectId =
     stringValue(fields.object_id) ||
@@ -99,37 +113,49 @@ function mapContentCreatedEvent(event: FeedEvent): MediaContent | null {
   return {
     id: objectId,
     title,
-    description: stringValue(fields.description),
+    description:
+      stringValue(meta.description) ||
+      stringValue(fields.description) ||
+      "No description",
     creator: creator.slice(0, 10),
     creatorAddress: creator,
     createdAt: new Date(numberValue(timestamp)).toISOString(),
     imageUrl: blobUrl(mediaBlobId),
     aspect: "landscape",
-    tags: stringArrayValue(fields.tags),
-    moderationStatus: moderationStatusValue(fields.moderationStatus),
+    tags: stringArrayValue(meta.tags || fields.tags),
+    moderationStatus: moderationStatusValue(
+      meta.moderationStatus || fields.moderationStatus
+    ),
     contentHash:
       stringValue(fields.content_hash) || stringValue(fields.contentHash),
     mediaBlobId,
     metadataBlobId,
     suiObjectId: objectId,
     mintTxId: event.id?.txDigest ?? "",
-    safetyScore: numberValue(fields.safetyScore)
+    safetyScore: numberValue(meta.safetyScore ?? fields.safetyScore)
   };
 }
 
 export default function FeedPage() {
+  const suiClient = useSuiClient();
   const [items, setItems] = useState<MediaContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const eventType = useMemo(() => {
-    return PACKAGE_ID ? `${PACKAGE_ID}::suistream::ContentCreated` : "";
+    return PACKAGE_ID ? `${PACKAGE_ID}::content::ContentMinted` : "";
   }, []);
 
-  async function loadFeed() {
+  const loadFeed = useCallback(async () => {
     if (!eventType) {
       setItems([]);
       setError("NEXT_PUBLIC_PACKAGE_ID is required before loading feed events.");
+      setLoading(false);
+      return;
+    }
+
+    if (!suiClient) {
+      setItems([]);
       setLoading(false);
       return;
     }
@@ -138,15 +164,139 @@ export default function FeedPage() {
     setError(null);
 
     try {
-      const response = await suiclient.queryEvents({
-        query: {
-          MoveEventType: eventType
-        },
-        limit: 50,
-        order: "descending"
+      let response: { data: FeedEvent[] } | null = null;
+
+      // Query ContentMinted (actual event type)
+      try {
+        const queryRes = await suiClient.queryEvents({
+          query: {
+            MoveEventType: eventType
+          },
+          limit: 50,
+          order: "descending"
+        });
+        response = queryRes as { data: FeedEvent[] };
+      } catch (err) {
+        console.error("Failed to query ContentMinted events:", err);
+      }
+
+      // Fallback to ContentCreated if ContentMinted returned nothing
+      if (!response || !response.data || response.data.length === 0) {
+        try {
+          const queryRes = await suiClient.queryEvents({
+            query: {
+              MoveEventType: `${PACKAGE_ID}::content::ContentCreated`
+            },
+            limit: 50,
+            order: "descending"
+          });
+          response = queryRes as { data: FeedEvent[] };
+        } catch (err) {
+          console.error("Failed to query fallback ContentCreated events:", err);
+        }
+      }
+
+      if (!response || !response.data || response.data.length === 0) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Extract objectIds from events
+      const objectIds: string[] = response.data
+        .map((event: FeedEvent) => {
+          const fields = event.parsedJson;
+          if (!fields) return null;
+          return (
+            stringValue(fields.object_id) ||
+            stringValue(fields.objectId) ||
+            stringValue(fields.content_id) ||
+            stringValue(fields.contentId) ||
+            stringValue(fields.id)
+          );
+        })
+        .filter((id: string | null): id is string => !!id);
+
+      const uniqueObjectIds = Array.from(new Set(objectIds));
+
+      // Fetch corresponding objects details
+      let objectsResponse: SuiObjectResponse[] = [];
+      if (uniqueObjectIds.length > 0) {
+        const multiGetRes = await suiClient.multiGetObjects({
+          ids: uniqueObjectIds,
+          options: {
+            showContent: true,
+            showOwner: true,
+            showType: true
+          }
+        });
+        objectsResponse = multiGetRes as SuiObjectResponse[];
+      }
+
+      const objectsMap = new Map<string, NonNullable<SuiObjectResponse["data"]>>();
+      for (const obj of objectsResponse) {
+        if (obj.data && obj.data.objectId) {
+          objectsMap.set(obj.data.objectId, obj.data);
+        }
+      }
+
+      // Fetch metadata from Walrus in parallel
+      const metadataPromises = uniqueObjectIds.map(async (objectId) => {
+        const objData = objectsMap.get(objectId);
+        const fields = objData?.content?.fields;
+        if (!fields) return { objectId, metadata: {} };
+
+        const metadataBlobId =
+          stringValue(fields.metadata_blob_id) ||
+          stringValue(fields.metadataBlobId) ||
+          stringValue(fields.metadata_id) ||
+          stringValue(fields.metadataId);
+
+        if (!metadataBlobId) return { objectId, metadata: {} };
+
+        try {
+          const res = await fetch(
+            `${WALRUS_AGGREGATOR_URL}/v1/blobs/${metadataBlobId}`
+          );
+          if (res.ok) {
+            const json = (await res.json()) as Record<string, unknown>;
+            return { objectId, metadata: json };
+          }
+        } catch (err) {
+          console.error("Failed to fetch metadata for object", objectId, err);
+        }
+        return { objectId, metadata: {} };
       });
+
+      const metadataResults = await Promise.all(metadataPromises);
+      const metadataMap = new Map<string, Record<string, unknown>>();
+      for (const item of metadataResults) {
+        metadataMap.set(item.objectId, item.metadata);
+      }
+
+      // Map events to MediaContent using fetched object fields and metadata
       const mapped = response.data
-        .map((event: FeedEvent) => mapContentCreatedEvent(event as FeedEvent))
+        .map((event: FeedEvent) => {
+          const fields = event.parsedJson;
+          if (!fields) return null;
+
+          const objectId =
+            stringValue(fields.object_id) ||
+            stringValue(fields.objectId) ||
+            stringValue(fields.content_id) ||
+            stringValue(fields.contentId) ||
+            stringValue(fields.id);
+
+          if (!objectId) return null;
+
+          const objData = objectsMap.get(objectId);
+          const objFields = objData?.content?.fields || null;
+
+          // If we couldn't fetch the object, map from event fields only (fallback)
+          const metadata = metadataMap.get(objectId) || null;
+
+          return mapContentCreatedEvent(event, objFields, metadata);
+        })
         .filter((item: MediaContent | null): item is MediaContent => item !== null);
 
       setItems(mapped);
@@ -158,11 +308,11 @@ export default function FeedPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [eventType, suiClient]);
 
   useEffect(() => {
     void loadFeed();
-  }, [eventType]);
+  }, [loadFeed]);
 
   return (
     <main className="pb-24 md:pb-0">
