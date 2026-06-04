@@ -146,7 +146,7 @@ export default function FeedPage() {
         order: "descending"
       });
       const mapped = response.data
-        .map((event) => mapContentCreatedEvent(event as FeedEvent))
+        .map((event: FeedEvent) => mapContentCreatedEvent(event as FeedEvent))
         .filter((item): item is MediaContent => item !== null);
 
       setItems(mapped);
