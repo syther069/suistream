@@ -1,10 +1,48 @@
+"use client";
+
 import Link from "next/link";
-import { MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { ImageOff, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TagList } from "@/components/tag-list";
 import { TipModal } from "@/components/TipModal";
 import type { MediaContent } from "@/lib/types";
 import { cn, shortenAddress } from "@/lib/utils";
+
+function WalrusImage({
+  src,
+  alt,
+  className
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  const [errored, setErrored] = useState(false);
+
+  if (!src || errored) {
+    return (
+      <div
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center gap-2 bg-surface-high text-on-muted",
+          className
+        )}
+      >
+        <ImageOff className="h-8 w-8 opacity-40" />
+        <span className="text-[10px] opacity-50">Image unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setErrored(true)}
+    />
+  );
+}
 
 export function MediaCard({ item }: { item: MediaContent }) {
   return (
@@ -16,7 +54,7 @@ export function MediaCard({ item }: { item: MediaContent }) {
           item.aspect === "portrait" ? "aspect-[3/4]" : "aspect-[4/3]"
         )}
       >
-        <img
+        <WalrusImage
           src={item.imageUrl}
           alt={item.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"

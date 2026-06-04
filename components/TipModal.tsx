@@ -132,15 +132,35 @@ async function getSpendableCoins(input: {
 
 function buildSuiTipTransaction(input: {
   contentObjectId: string;
+  creatorAddress: string;
   amount: bigint;
 }) {
   if (!PACKAGE_ID) {
     throw new Error("NEXT_PUBLIC_PACKAGE_ID is required before tipping.");
   }
 
+  if (!input.contentObjectId || !input.contentObjectId.startsWith("0x")) {
+    throw new Error(
+      `Invalid content object ID: "${input.contentObjectId}". Cannot build tip transaction.`
+    );
+  }
+
+  if (!input.creatorAddress || !input.creatorAddress.startsWith("0x")) {
+    throw new Error(
+      `Invalid creator address: "${input.creatorAddress}". Cannot tip without a valid recipient.`
+    );
+  }
+
+  if (input.amount <= 0n) {
+    throw new Error("Tip amount must be greater than 0.");
+  }
+
   const tx = new Transaction();
+
+  // Split the exact tip amount from gas coin
   const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(input.amount)]);
 
+  // Call the contract's tip_creator which internally transfers the coin to the creator
   tx.moveCall({
     target: `${PACKAGE_ID}::content::tip_creator`,
     arguments: [tx.object(input.contentObjectId), coin]
@@ -288,18 +308,33 @@ export function TipModal({
     }
 
     try {
+      if (!account?.address) {
+        throw new Error("Connect a wallet before sending a tip.");
+      }
+
       const amount = smallestUnitsFromTokenAmount(tokenAmount, token.decimals);
+
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[TipModal] Building tip tx", {
+          token: token.symbol,
+          contentObjectId,
+          creatorAddress,
+          amount: amount.toString()
+        });
+      }
+
       const transaction =
         token.symbol === "SUI"
           ? buildSuiTipTransaction({
               contentObjectId: contentObjectId ?? "",
+              creatorAddress,
               amount
             })
           : buildDirectTransferTransaction({
               creatorAddress,
               amount,
               coins: await getSpendableCoins({
-                owner: account?.address ?? "",
+                owner: account.address,
                 coinType: token.coinType,
                 amount,
                 suiClient

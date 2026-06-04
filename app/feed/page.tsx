@@ -5,7 +5,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { FeedGrid } from "@/components/feed-grid";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { PACKAGE_ID, WALRUS_AGGREGATOR_URL } from "@/lib/config";
+import { PACKAGE_ID } from "@/lib/config";
+
 import { useSuiClient } from "@mysten/dapp-kit";
 import type { MediaContent, ModerationStatus } from "@/lib/types";
 
@@ -65,8 +66,9 @@ function moderationStatusValue(value: unknown): ModerationStatus {
 
 function blobUrl(blobId: string) {
   if (!blobId) return "";
-  const base = WALRUS_AGGREGATOR_URL || "https://aggregator.walrus.space";
-  return `${base}/v1/${blobId}`;
+  // Always use mainnet Walrus aggregator for feed images
+  // (env may point to testnet; mainnet content must go to mainnet aggregator)
+  return `https://aggregator.walrus.space/v1/blobs/${blobId}`;
 }
 
 function mapContentCreatedEvent(
@@ -256,7 +258,7 @@ export default function FeedPage() {
 
         try {
           const res = await fetch(
-            `${WALRUS_AGGREGATOR_URL}/v1/blobs/${metadataBlobId}`
+            `https://aggregator.walrus.space/v1/blobs/${metadataBlobId}`
           );
           if (res.ok) {
             const json = (await res.json()) as Record<string, unknown>;
