@@ -256,23 +256,70 @@ export function TipModal({
 
   const loadPrice = useCallback(async (nextToken: TokenOption) => {
     if (nextToken.symbol === "USDC") {
+      // USDC is pegged 1:1 USD
       setPrices((current) => ({ ...current, USDC: 1 }));
       setPriceError(null);
       return;
     }
 
+    if (nextToken.symbol === "WAL") {
+      // Try Pyth price first with loading state management
+      setPriceLoading(true);
+      setPriceError(null);
+      try {
+        const response = await fetch(
+          `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${"0x427ecac10f8b5f583ca11c02e7f457640b9fb5be0fcf1d55de1cf47ab92c3b6f"}`
+        );
+        if (!response.ok) {
+          throw new Error(`Pyth request failed with ${response.status}`);
+        }
+        const data = (await response.json()) as unknown;
+        const pythData = data as { parsed: { price: { price: string | number; expo: number } }[] };
+        const priceInfo = pythData.parsed?.[0]?.price;
+        if (!priceInfo?.price || typeof priceInfo?.expo !== "number") {
+          throw new Error("Invalid Pyth price data");
+        }
+        const walPrice = Number(priceInfo.price) * Math.pow(10, priceInfo.expo);
+        setPrices((current) => ({ ...current, WAL: walPrice }));
+        setPriceError(null);
+        return;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
+        // Fallback to CoinGecko if Pyth fails (including 404)
+        try {
+          const cgRes = await fetch(
+            "https://api.coingecko.com/api/v3/simple/price?ids=walrus-protocol&vs_currencies=usd"
+          );
+          if (!cgRes.ok) {
+            throw new Error(`CoinGecko request failed with ${cgRes.status}`);
+          }
+          const cgData = (await cgRes.json()) as unknown;
+          const cgParsed = cgData as { [key: string]: { usd: number } };
+          const walPrice = cgParsed["walrus-protocol"]?.usd;
+          if (!walPrice) {
+            throw new Error("CoinGecko returned no WAL price");
+          }
+          setPrices((current) => ({ ...current, WAL: walPrice }));
+          setPriceError(null);
+          return;
+        } catch (cgErr) {
+          setPriceError(cgErr instanceof Error ? cgErr.message : "Unable to fetch WAL price");
+        }
+      } finally {
+        setPriceLoading(false);
+      }
+    }
+
+    // For SUI use Pyth price as before
     setPriceLoading(true);
     setPriceError(null);
-
     try {
       const response = await fetch(
         `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${nextToken.pythPriceId}`
       );
-
       if (!response.ok) {
         throw new Error(`Price request failed with ${response.status}.`);
       }
-
       const payload: unknown = await response.json();
       const price = parsePythPrice(payload);
       setPrices((current) => ({ ...current, [nextToken.symbol]: price }));
@@ -510,7 +557,7 @@ export function TipModal({
               <Button
                 type="button"
                 onClick={sendTip}
-                disabled={processing || priceLoading || !!priceError}
+                disabled={processing || priceLoading || !!priceError || !!validationError}
               >
                 {processing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
