@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { ImageOff, MoreVertical } from "lucide-react";
+import { ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TagList } from "@/components/tag-list";
 import { TipModal } from "@/components/TipModal";
@@ -14,13 +13,13 @@ function WalrusImage({
   alt,
   className
 }: {
-  src: string;
+  src: string | null;
   alt: string;
   className?: string;
 }) {
   const [errored, setErrored] = useState(false);
 
-  if (!src || errored) {
+  if (!src) {
     return (
       <div
         className={cn(
@@ -29,9 +28,13 @@ function WalrusImage({
         )}
       >
         <ImageOff className="h-8 w-8 opacity-40" />
-        <span className="text-[10px] opacity-50">Image unavailable</span>
+        <span className="text-[10px] opacity-50">No image</span>
       </div>
     );
+  }
+
+  if (errored) {
+    return null;
   }
 
   return (
@@ -39,7 +42,11 @@ function WalrusImage({
       src={src}
       alt={alt}
       className={className}
-      onError={() => setErrored(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+        setErrored(true);
+      }}
     />
   );
 }
@@ -47,8 +54,7 @@ function WalrusImage({
 export function MediaCard({ item }: { item: MediaContent }) {
   return (
     <article className="masonry-item overflow-hidden rounded-lg border border-outline-soft bg-surface-container transition-colors hover:border-primary/50">
-      <Link
-        href={`/content/${item.id}`}
+      <div
         className={cn(
           "group relative block overflow-hidden bg-surface-low",
           item.aspect === "portrait" ? "aspect-[3/4]" : "aspect-[4/3]"
@@ -65,23 +71,17 @@ export function MediaCard({ item }: { item: MediaContent }) {
             <Badge>AI Tagged</Badge>
           </div>
         </div>
-      </Link>
+      </div>
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <Link
-              href={`/content/${item.id}`}
-              className="font-semibold text-on-surface transition-colors hover:text-primary"
-            >
+            <h3 className="font-semibold text-on-surface">
               {item.title}
-            </Link>
+            </h3>
             <div className="mt-1 text-xs text-on-muted">
               {item.creator} / {shortenAddress(item.creatorAddress)}
             </div>
           </div>
-          <button className="focus-ring rounded p-1.5 text-on-muted hover:bg-surface-high hover:text-on-surface">
-            <MoreVertical className="h-4 w-4" />
-          </button>
         </div>
         <TagList tags={item.tags.slice(0, 3)} dense />
         <div className="flex items-center justify-between border-t border-outline-soft pt-3">

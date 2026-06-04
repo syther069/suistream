@@ -64,11 +64,32 @@ function moderationStatusValue(value: unknown): ModerationStatus {
   return value === "flagged" ? "flagged" : "approved";
 }
 
-function blobUrl(blobId: string) {
-  if (!blobId) return "";
-  // Always use mainnet Walrus aggregator for feed images
-  // (env may point to testnet; mainnet content must go to mainnet aggregator)
-  return `https://aggregator.walrus.space/v1/blobs/${blobId}`;
+function blobUrl(blobIdOrUrl: string) {
+  if (!blobIdOrUrl) return "";
+
+  if (/^https?:\/\//.test(blobIdOrUrl)) {
+    return blobIdOrUrl;
+  }
+
+  return `https://aggregator.walrus.space/v1/${blobIdOrUrl}`;
+}
+
+function blobIdFromFields(fields: Record<string, unknown>) {
+  const imageUrl = stringValue(fields.image_url) || stringValue(fields.imageUrl);
+
+  if (imageUrl) {
+    const match = imageUrl.match(/\/v1\/(?:blobs\/)?([^/?#]+)/);
+    return match?.[1] ?? imageUrl;
+  }
+
+  return (
+    stringValue(fields.blob_id) ||
+    stringValue(fields.blobId) ||
+    stringValue(fields.media_blob_id) ||
+    stringValue(fields.mediaBlobId) ||
+    stringValue(fields.walrus_blob_id) ||
+    stringValue(fields.walrusBlobId)
+  );
 }
 
 function mapContentCreatedEvent(
@@ -78,8 +99,7 @@ function mapContentCreatedEvent(
 ): MediaContent | null {
   const eventFields = event.parsedJson || {};
 
-  // Debug: log raw event data to identify blob ID field names
-  console.log("Event data:", JSON.stringify(event.parsedJson));
+  console.log("RAW EVENT:", JSON.stringify(event.parsedJson, null, 2));
 
   const fields = { ...eventFields, ...(objFields || {}) };
   const meta = metadata || {};
@@ -90,11 +110,7 @@ function mapContentCreatedEvent(
     stringValue(fields.content_id) ||
     stringValue(fields.contentId) ||
     stringValue(fields.id);
-  const mediaBlobId =
-    stringValue(fields.media_blob_id) ||
-    stringValue(fields.mediaBlobId) ||
-    stringValue(fields.blob_id) ||
-    stringValue(fields.blobId);
+  const mediaBlobId = blobIdFromFields(fields);
   const metadataBlobId =
     stringValue(fields.metadata_blob_id) ||
     stringValue(fields.metadataBlobId) ||
@@ -106,7 +122,7 @@ function mapContentCreatedEvent(
     stringValue(fields.creatorAddress);
   const title = stringValue(fields.title) || "Untitled stream";
 
-  if (!objectId || !creator || !mediaBlobId) {
+  if (!objectId || !creator) {
     return null;
   }
 
@@ -126,7 +142,7 @@ function mapContentCreatedEvent(
     creator: creator.slice(0, 10),
     creatorAddress: creator,
     createdAt: new Date(numberValue(timestamp)).toISOString(),
-    imageUrl: blobUrl(mediaBlobId),
+    imageUrl: mediaBlobId ? blobUrl(mediaBlobId) : null,
     aspect: "landscape",
     tags: stringArrayValue(meta.tags || fields.tags),
     moderationStatus: moderationStatusValue(

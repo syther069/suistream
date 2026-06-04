@@ -7,7 +7,7 @@ export type MediaContent = {
   creator: string;
   creatorAddress: string;
   createdAt: string;
-  imageUrl: string;
+  imageUrl: string | null;
   aspect: "portrait" | "landscape" | "square";
   tags: string[];
   moderationStatus: ModerationStatus;
