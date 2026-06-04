@@ -45,7 +45,7 @@ function numberValue(value: unknown) {
 
 function stringArrayValue(value: unknown) {
   return Array.isArray(value)
-    ? value.filter((item: MediaContent | null): item is string => typeof item === "string")
+    ? value.filter((item: unknown): item is string => typeof item === "string")
     : [];
 }
 
