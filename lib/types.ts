@@ -11,6 +11,7 @@ export type MediaContent = {
   aspect: "portrait" | "landscape" | "square";
   tags: string[];
   moderationStatus: ModerationStatus;
+  isDemo?: boolean;
   contentHash: string;
   mediaBlobId: string;
   metadataBlobId: string;
@@ -24,6 +25,7 @@ export type AiAnalysis = {
   description: string;
   safetyScore: number;
   moderationStatus: ModerationStatus;
+  isDemo?: boolean;
 };
 
 export type UploadedContentMetadata = {
@@ -33,6 +35,7 @@ export type UploadedContentMetadata = {
   createdAt: string;
   tags: string[];
   moderationStatus: ModerationStatus;
+  isDemo?: boolean;
   contentHash: string;
   mediaSizeBytes: number;
   metadataSizeBytes: number;
@@ -55,6 +58,7 @@ export type OwnedContent = {
   imageUrl: string;
   tags: string[];
   moderationStatus: ModerationStatus;
+  isDemo?: boolean;
   contentHash: string;
   mediaBlobId: string;
   metadataBlobId: string;

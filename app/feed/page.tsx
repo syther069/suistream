@@ -6,7 +6,7 @@ import { FeedGrid } from "@/components/feed-grid";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { PACKAGE_ID, WALRUS_AGGREGATOR_URL } from "@/lib/config";
-import { suiClient } from "@/lib/sui-client";
+import { suiclient } from "@/lib/sui-client";
 import type { MediaContent, ModerationStatus } from "@/lib/types";
 
 const categories = [
@@ -138,7 +138,7 @@ export default function FeedPage() {
     setError(null);
 
     try {
-      const response = await suiClient.queryEvents({
+      const response = await suiclient.queryEvents({
         query: {
           MoveEventType: eventType
         },
