@@ -77,6 +77,10 @@ function mapContentCreatedEvent(
   metadata?: Record<string, unknown> | null
 ): MediaContent | null {
   const eventFields = event.parsedJson || {};
+
+  // Debug: log raw event data to identify blob ID field names
+  console.log("Event data:", JSON.stringify(event.parsedJson));
+
   const fields = { ...eventFields, ...(objFields || {}) };
   const meta = metadata || {};
 

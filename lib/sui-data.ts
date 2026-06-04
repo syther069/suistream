@@ -197,7 +197,7 @@ async function toOwnedContent(object: SuiObjectResponse): Promise<OwnedContent |
       metadata.description || stringField(fields, "description") || "No description",
     creatorAddress: stringField(fields, "creator"),
     createdAt: new Date(numberField(fields, "created_at")).toISOString(),
-    imageUrl: `${WALRUS_AGGREGATOR_URL}/v1/blobs/${mediaBlobId}`,
+    imageUrl: `https://aggregator.walrus.space/v1/blobs/${mediaBlobId}`,
     tags: metadata.tags ?? [],
     moderationStatus: metadata.moderationStatus ?? "approved",
     contentHash: stringField(fields, "content_hash"),
