@@ -8,15 +8,15 @@ import type { MediaContent } from "@/lib/types";
 import { cn, shortenAddress } from "@/lib/utils";
 
 function WalrusImage({
-  src,
+  blobId,
   alt,
   className
 }: {
-  src: string | null;
+  blobId: string;
   alt: string;
   className?: string;
 }) {
-  if (!src) {
+  if (!blobId) {
     return (
       <div
         className={cn(
@@ -32,10 +32,15 @@ function WalrusImage({
 
   return (
     <img
-      src={src}
+      src={`https://aggregator.walrus.space/v1/${blobId}`}
       alt={alt}
       className={className}
-      style={{ width: "100%", height: "200px", objectFit: "cover" }}
+      style={{
+        width: "100%",
+        height: "220px",
+        objectFit: "cover",
+        borderRadius: "8px 8px 0 0"
+      }}
       onError={(event) => {
         event.currentTarget.style.display = "none";
       }}
@@ -53,7 +58,7 @@ export function MediaCard({ item }: { item: MediaContent }) {
         )}
       >
         <WalrusImage
-          src={item.imageUrl}
+          blobId={item.mediaBlobId}
           alt={item.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
