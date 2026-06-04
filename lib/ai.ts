@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 import type { AiAnalysis, ModerationStatus } from "@/lib/types";
 
 function isModerationStatus(value: unknown): value is ModerationStatus {
@@ -76,7 +76,28 @@ function buildPrompt(input: {
 
 3. **safetyScore**: A number between 0 and 1 representing content safety. 1.0 = completely safe. 0.0 = clearly unsafe. Consider NSFW content, violence, hate symbols, harmful content, and graphic material.
 
-4. **moderationStatus**: "approved" if the image is safe for a public content platform. "flagged" if it contains NSFW, violence, hate, or harmful content.${contextBlock}
+4. **moderationStatus**:
+
+Return "approved" for:
+- anime artwork
+- illustrations
+- gaming content
+- memes
+- fantasy characters
+- smoking or cigarettes
+- celebrities
+- products
+- vehicles
+- landscapes
+- normal social media content
+
+Return "flagged" ONLY for:
+- nudity or pornography
+- graphic violence or gore
+- self-harm
+- hate symbols
+- child exploitation
+- illegal dangerous activities${contextBlock}
 
 Return ONLY raw JSON, no markdown, no backticks:
 { "tags": string[], "description": string, "safetyScore": number, "moderationStatus": "approved" | "flagged" }`;
@@ -88,22 +109,25 @@ export async function analyzeImage(input: {
   title?: string;
   description?: string;
 }): Promise<AiAnalysis> {
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-  console.log(`[AI] API key detected: ${!!openaiApiKey}`);
+ const groqApiKey = process.env.GROQ_API_KEY;
+console.log(`[AI] API key detected: ${!!groqApiKey}`);
 
-  if (!openaiApiKey) {
-    const errorMsg = "OpenAI API key missing";
-    console.error(`[AI] ${errorMsg}`);
-    throw new Error(errorMsg);
-  }
+if (!groqApiKey) {
+  const errorMsg = "GROQ_API_KEY missing";
+  console.error(`[AI] ${errorMsg}`);
+  throw new Error(errorMsg);
+}
 
-  const model = "gpt-4o";
-  console.log(`[AI] Model being used: ${model}`);
+const model = "meta-llama/llama-4-scout-17b-16e-instruct";
+console.log(`[AI] Model being used: ${model}`);
 
-  const openai = new OpenAI({ apiKey: openaiApiKey });
+const groq = new Groq({
+  apiKey: groqApiKey,
+});
 
   try {
-    const response = await openai.chat.completions.create({
+       console.log("[AI] About to call Groq");
+    const response = await groq.chat.completions.create({
       model,
       response_format: { type: "json_object" },
       max_tokens: 1024,
@@ -131,23 +155,39 @@ export async function analyzeImage(input: {
       timeout: 30_000
     });
 
-    console.log("[AI] OpenAI response received successfully");
-    const messageContent = response.choices?.[0]?.message?.content;
+   console.log("[AI] Groq response received successfully");
 
-    if (!messageContent) {
-      const errorMsg = "OpenAI returned an empty response content.";
-      console.error(`[AI] ${errorMsg}`);
-      throw new Error(errorMsg);
-    }
+const messageContent = response.choices?.[0]?.message?.content;
 
-    const parsed = toAiAnalysis(JSON.parse(extractJson(messageContent)));
-    if (!parsed) {
-      const errorMsg = "Failed to map OpenAI response to structured AI analysis format.";
-      console.error(`[AI] ${errorMsg}`);
-      throw new Error(errorMsg);
-    }
+console.log("[AI] Raw Response:");
+console.log(messageContent);
 
-    return parsed;
+if (!messageContent) {
+  const errorMsg = "Groq returned an empty response content.";
+  console.error(`[AI] ${errorMsg}`);
+  throw new Error(errorMsg);
+}
+
+const raw = JSON.parse(extractJson(messageContent));
+
+console.log("[AI] Parsed JSON:");
+console.log(raw);
+
+const parsed = toAiAnalysis(raw);
+
+if (!parsed) {
+  console.error("[AI] Failed to map response.");
+  console.error("[AI] Raw object:", raw);
+
+  throw new Error(
+    "Failed to map Groq response to structured AI analysis format."
+  );
+}
+
+console.log("[AI] Final Parsed Analysis:");
+console.log(parsed);
+
+return parsed;
   } catch (error: unknown) {
     console.error("[AI] Request failure");
     const errStatus = error && typeof error === "object" && "status" in error
