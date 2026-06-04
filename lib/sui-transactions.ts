@@ -30,26 +30,3 @@ export function buildMintContentTransaction(input: {
 
   return transaction;
 }
-
-export function buildTipContentTransaction(input: {
-  contentObjectId: string;
-  amountMist: bigint;
-}) {
-  if (!PACKAGE_ID) {
-    throw new Error(
-      "NEXT_PUBLIC_PACKAGE_ID is missing. TODO: redeploy the Move package to mainnet and set the package ID."
-    );
-  }
-
-  const transaction = new Transaction();
-  const tipCoin = transaction.splitCoins(transaction.gas, [
-    transaction.pure.u64(input.amountMist)
-  ]);
-
-  transaction.moveCall({
-    target: `${PACKAGE_ID}::content::tip_creator`,
-    arguments: [transaction.object(input.contentObjectId), tipCoin]
-  });
-
-  return transaction;
-}

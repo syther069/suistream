@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TagList } from "@/components/tag-list";
-import { TipButton } from "@/components/tip-button";
+import { TipModal } from "@/components/TipModal";
 import type { MediaContent } from "@/lib/types";
 import { cn, shortenAddress } from "@/lib/utils";
 
@@ -50,8 +50,9 @@ export function MediaCard({ item }: { item: MediaContent }) {
           <span className="font-mono text-xs text-on-muted">
             {shortenAddress(item.suiObjectId)}
           </span>
-          <TipButton
+          <TipModal
             creator={item.creator}
+            creatorAddress={item.creatorAddress}
             contentObjectId={item.suiObjectId}
             compact
           />

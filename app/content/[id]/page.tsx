@@ -3,7 +3,7 @@ import { Bookmark, ExternalLink, Share2 } from "lucide-react";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { SiteHeader } from "@/components/site-header";
 import { TagList } from "@/components/tag-list";
-import { TipButton } from "@/components/tip-button";
+import { TipModal } from "@/components/TipModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,8 +53,9 @@ export default async function ContentDetailPage({
                 </div>
                 <div className="flex gap-3">
                   <Button variant="secondary">Follow</Button>
-                  <TipButton
+                  <TipModal
                     creator={content.creator}
+                    creatorAddress={content.creatorAddress}
                     contentObjectId={content.isDemo ? undefined : content.suiObjectId}
                     disabled={content.isDemo}
                     disabledReason="Tipping not available on demo content"
