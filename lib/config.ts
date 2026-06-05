@@ -11,7 +11,8 @@ export const PACKAGE_ID =
   process.env.NEXT_PUBLIC_PACKAGE_ID ||
   "0x246569ade9881913eb84c55f8883ab670872a8d5762957614544a166a2512bd6";
 
-export const SUI_EXPLORER_BASE_URL = "https://suiexplorer.com";
+export const SUI_EXPLORER_BASE_URL =
+  SUI_NETWORK === "testnet" ? "https://testnet.suivision.xyz" : "https://suivision.xyz";
 
 export function assertMainnet() {
   if (SUI_NETWORK !== "mainnet") {
@@ -21,9 +22,9 @@ export function assertMainnet() {
   }
 }
 export function getSuiExplorerTransactionUrl(digest: string) {
-  return `${SUI_EXPLORER_BASE_URL}/txblock/${digest}?network=mainnet`;
+  return `${SUI_EXPLORER_BASE_URL}/txblock/${digest}`;
 }
 
 export function getSuiExplorerObjectUrl(objectId: string) {
-  return `${SUI_EXPLORER_BASE_URL}/object/${objectId}?network=mainnet`;
+  return `${SUI_EXPLORER_BASE_URL}/object/${objectId}`;
 }
