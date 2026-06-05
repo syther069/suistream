@@ -79,7 +79,7 @@ export default function HomePage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="grid w-full max-w-3xl grid-cols-1 gap-4 px-6 sm:grid-cols-3">
                   {[
-                    { label: "OpenAI", icon: Bot },
+                    { label: "AI", icon: Bot },
                     { label: "Walrus", icon: Database },
                     { label: "Sui", icon: Verified }
                   ].map((item) => {
