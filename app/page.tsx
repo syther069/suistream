@@ -157,7 +157,7 @@ export default function HomePage() {
       <footer className="border-t border-outline-soft py-8">
         <div className="container-grid flex flex-col justify-between gap-4 text-sm text-on-muted md:flex-row">
           <span className="font-mono">SuiStream / 2026</span>
-          <span>Powered by Walrus, Sui, Tatum, and OpenAI</span>
+          <span>Powered by Walrus, Sui, Tatum, and AI</span>
           <span className="font-mono">Mainnet configuration required</span>
         </div>
       </footer>
