@@ -34,8 +34,10 @@ async function delay(ms: number) {
 
 async function uploadDirectToWalrus(blob: Blob, label: string): Promise<string> {
   let url = `${WALRUS_PUBLISHER_URL}/v1/blobs?epochs=3&deletable=true`;
-  if (url.includes("//publisher.walrus.space")) {
-    url = url.replace("//publisher.walrus.space", "//publisher.walrus-testnet.walrus.space");
+  if (url.includes("publisher.walrus") && !url.includes("publisher.walrus-testnet")) {
+    url = url
+      .replace("publisher.walrus-mainnet.walrus.space", "publisher.walrus-testnet.walrus.space")
+      .replace("publisher.walrus.space", "publisher.walrus-testnet.walrus.space");
   }
 
   const response = await fetch(url, {
