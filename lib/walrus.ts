@@ -32,7 +32,71 @@ async function delay(ms: number) {
   });
 }
 
-async function uploadDirectToWalrus(blob: Blob, label: string): Promise<string> {
+async function compressImageIfPossible(file: File): Promise<Blob | File> {
+  if (typeof window === "undefined") {
+    return file;
+  }
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+  if (file.size < 100 * 1024) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        const MAX_DIM = 1024;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              console.log(
+                `[Walrus Client Compression] Compressed image: ${file.name} (${(file.size / 1024).toFixed(1)} KB) -> JPEG (${(blob.size / 1024).toFixed(1)} KB)`
+              );
+              resolve(blob);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.75
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadDirectToWalrus(blob: Blob | File, label: string): Promise<string> {
   let url = `${WALRUS_PUBLISHER_URL}/v1/blobs?epochs=3&deletable=true`;
   if (url.includes("publisher.walrus") && !url.includes("publisher.walrus-testnet")) {
     url = url
@@ -64,6 +128,9 @@ export async function uploadMediaAndMetadata(input: {
   media: File;
   metadata: UploadedContentMetadata;
 }): Promise<WalrusUploadResult> {
+  // Compress image on the client side to bypass Walrus latency and size limits
+  const finalMedia = await compressImageIfPossible(input.media);
+
   const metadataString = JSON.stringify(input.metadata, null, 2);
   const metadataBlob = new Blob([metadataString], { type: "application/json" });
 
@@ -71,7 +138,7 @@ export async function uploadMediaAndMetadata(input: {
   try {
     console.log("[Walrus Client Upload] Attempting direct upload to publisher...");
     const [mediaBlobId, metadataBlobId] = await Promise.all([
-      uploadDirectToWalrus(input.media, "Media"),
+      uploadDirectToWalrus(finalMedia, "Media"),
       uploadDirectToWalrus(metadataBlob, "Metadata")
     ]);
 
@@ -79,7 +146,7 @@ export async function uploadMediaAndMetadata(input: {
     return {
       mediaBlobId,
       metadataBlobId,
-      mediaSizeBytes: input.media.size,
+      mediaSizeBytes: finalMedia.size,
       metadataSizeBytes: metadataBlob.size
     };
   } catch (caught) {
@@ -88,7 +155,12 @@ export async function uploadMediaAndMetadata(input: {
 
   // 2. Fallback to API proxy route if direct upload failed
   const formData = new FormData();
-  formData.set("media", input.media);
+  formData.set(
+    "media",
+    finalMedia instanceof File
+      ? finalMedia
+      : new File([finalMedia], input.media.name, { type: finalMedia.type })
+  );
   formData.set("metadata", metadataString);
 
   let lastError = "Walrus upload failed.";
