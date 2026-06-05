@@ -289,7 +289,7 @@ export default function FeedPage() {
 
           try {
             const res = await fetch(
-              `/walrus-proxy/v1/blobs/${metadataBlobId}`
+              `${WALRUS_AGGREGATOR_URL}/${metadataBlobId}`
             );
             if (res.ok) {
               const json = (await res.json()) as Record<string, unknown>;
