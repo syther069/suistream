@@ -5,7 +5,7 @@ export const TATUM_SUI_RPC_URL = "https://sui-mainnet.gateway.tatum.io";
 export const WALRUS_AGGREGATOR_URL = "/api/walrus";
 
 export const WALRUS_PUBLISHER_URL =
-  process.env.NEXT_PUBLIC_WALRUS_PUBLISHER ?? "https://publisher.walrus.space";
+  process.env.NEXT_PUBLIC_WALRUS_PUBLISHER ?? "https://publisher.walrus-testnet.walrus.space";
 
 export const PACKAGE_ID =
   process.env.NEXT_PUBLIC_PACKAGE_ID ||
