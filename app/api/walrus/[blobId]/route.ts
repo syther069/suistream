@@ -6,7 +6,7 @@ export async function GET(
 ) {
   const { blobId } = await params
   const response = await fetch(
-    `https://aggregator.walrus.space/v1/blobs/${blobId}`
+    `https://aggregator.walrus-mainnet.walrus.space/v1/blobs/${blobId}`
   )
   if (!response.ok) {
     return new NextResponse("Not found", { status: 404 })
