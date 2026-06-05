@@ -16,7 +16,7 @@ const stats = [
   ["Mainnet", "Sui network"],
   ["Walrus", "Storage layer"],
   ["Tatum", "RPC provider"],
-  ["OpenAI", "AI moderation"]
+  ["AI Moderation", "AI moderation"]
 ];
 
 const features = [
