@@ -10,15 +10,6 @@ import { PACKAGE_ID, WALRUS_AGGREGATOR_URL } from "@/lib/config";
 import { useSuiClient } from "@mysten/dapp-kit";
 import type { MediaContent, ModerationStatus } from "@/lib/types";
 
-const categories = [
-  "All Content",
-  "Generative Art",
-  "Motion Graphics",
-  "3D Architecture",
-  "Hyper-Surrealism",
-  "AI Portraits"
-];
-
 type FeedEvent = {
   id?: {
     txDigest?: string;
@@ -374,18 +365,6 @@ export default function FeedPage() {
           <div className="font-mono text-xs uppercase tracking-wider text-primary">
             {loading ? "Loading streams" : `${items.length} streams`}
           </div>
-        </div>
-        <div className="mb-8 flex gap-3 overflow-x-auto pb-2">
-          {categories.map((category, index) => (
-            <Button
-              key={category}
-              variant={index === 0 ? "primary" : "secondary"}
-              size="sm"
-              className="shrink-0"
-            >
-              {category}
-            </Button>
-          ))}
         </div>
         {loading ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
