@@ -33,11 +33,6 @@ function getBlobId(result: WalrusPublisherResponse) {
   );
 }
 
-async function delay(ms: number) {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 async function uploadBlobWithRetry(blob: Blob, label: string) {
   let url = `${WALRUS_PUBLISHER_URL}/v1/blobs?epochs=3&deletable=true`;
@@ -46,12 +41,18 @@ async function uploadBlobWithRetry(blob: Blob, label: string) {
   }
   let lastError: string | null = null;
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  // Reduced attempts to 1 inside the Vercel API route to prevent 10s Serverless Function timeouts.
+  // The client browser has its own retry loop and handles timeout/retry gracefully.
+  for (let attempt = 1; attempt <= 1; attempt += 1) {
     try {
-      console.log(`[Walrus Upload] [${label}] Attempt ${attempt}/3 starting. URL: ${url}`);
+      console.log(`[Walrus Upload] [${label}] Upload starting. URL: ${url}`);
+      
+      const arrayBuffer = await blob.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
       const response = await fetch(url, {
         method: "PUT",
-        body: blob,
+        body: buffer,
         headers: blob.type ? { "Content-Type": blob.type } : undefined
       });
 
@@ -77,11 +78,7 @@ async function uploadBlobWithRetry(blob: Blob, label: string) {
         caught instanceof Error
           ? caught.message
           : `${label} upload failed unexpectedly.`;
-      console.error(`[Walrus Upload] [${label}] Attempt ${attempt} exception:`, caught);
-    }
-
-    if (attempt < 3) {
-      await delay(500 * attempt);
+      console.error(`[Walrus Upload] [${label}] Exception:`, caught);
     }
   }
 
