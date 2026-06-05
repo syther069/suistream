@@ -121,3 +121,23 @@ button {
 .focus-ring:focus-visible {
   outline-color: #a1c9ff;
 }
+
+.landing-wallet button {
+  min-height: auto !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0 !important;
+  background: #111111 !important;
+  box-shadow: none !important;
+  padding: 0.5rem 0.75rem !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-family:
+    var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas,
+    monospace !important;
+  font-size: 0.75rem !important;
+  transition: border-color 200ms ease !important;
+}
+
+.landing-wallet button:hover {
+  border-color: #6fbcf0 !important;
+  background: #111111 !important;
+}

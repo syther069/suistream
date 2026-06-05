@@ -5,160 +5,154 @@ import {
   Database,
   HandCoins,
   ShieldCheck,
-  Sparkles,
-  Verified
+  Waypoints
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SiteHeader } from "@/components/site-header";
-import { WalletConnectButton } from "@/components/wallet-connect-button";
+import { LandingHeader } from "@/components/landing-header";
 
 const stats = [
-  ["Mainnet", "Sui network"],
-  ["Walrus", "Storage layer"],
-  ["Tatum", "RPC provider"],
-  ["OpenAI", "AI moderation"]
+  { value: "Mainnet", label: "Sui Network", icon: Waypoints },
+  { value: "Walrus", label: "Storage Layer", icon: Database },
+  { value: "Tatum", label: "RPC Provider", icon: ShieldCheck },
+  { value: "OpenAI", label: "Moderation", icon: Bot }
 ];
 
 const features = [
   {
     title: "Upload to Walrus",
-    body: "Store media and metadata through mainnet Walrus publisher endpoints with 3 epochs and deletable storage.",
-    icon: CloudUpload,
-    wide: true
+    body: "Store media and metadata. 3 epochs. Deletable.",
+    icon: CloudUpload
   },
   {
     title: "Verify on Sui",
-    body: "Every approved asset is represented by a Sui content object with hash, creator, and tip events.",
+    body: "Every asset is an on-chain object with hash, creator, and tip events.",
     icon: ShieldCheck
   },
   {
     title: "AI Moderation",
-    body: "Generate tags, descriptions, and safety status before storage and minting.",
+    body: "Generate tags, descriptions, and safety status before storage.",
     icon: Bot
   },
   {
-    title: "Creator Economy",
-    body: "SUI tips are signed by connected wallets and recorded through mainnet content events.",
-    icon: HandCoins,
-    wide: true
+    title: "Direct Tips",
+    body: "Send SUI to creators. No platform cut. On-chain record.",
+    icon: HandCoins
   }
 ];
 
 export default function HomePage() {
   return (
-    <main>
-      <SiteHeader />
-      <section className="relative overflow-hidden">
-        <div className="technical-grid absolute inset-x-0 top-0 h-[560px] opacity-50" />
-        <div className="absolute left-1/2 top-40 h-96 w-[70vw] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-        <div className="container-grid relative flex min-h-[calc(100vh-64px)] flex-col items-center justify-center py-16 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-outline-soft bg-surface-low px-4 py-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="font-mono text-xs uppercase tracking-wider text-on-muted">
-              Network live on Sui mainnet
-            </span>
+    <main className="min-h-screen bg-[#0a0a0a] text-white/[0.90]">
+      <LandingHeader />
+
+      <section className="mx-auto flex min-h-[calc(100vh-65px)] w-[min(100%-2rem,1200px)] items-center py-20 sm:py-28">
+        <div>
+          <div className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.05em] text-white/[0.60]">
+            <span className="h-1.5 w-1.5 bg-[#6FBCF0]" />
+            Network live on Sui mainnet
           </div>
-          <h1 className="max-w-5xl text-5xl font-extrabold leading-[1.04] tracking-tight sm:text-7xl lg:text-8xl">
+          <h1 className="max-w-4xl text-5xl font-semibold leading-[1.1] tracking-[-0.04em] text-white/[0.90] sm:text-6xl">
             Upload Once.
             <br />
-            <span className="text-primary">Own Forever.</span>
+            Own Forever.
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-on-muted">
-            Store media on Walrus, verify ownership on Sui, and monetize content
-            through a decentralized creator workflow with AI moderation in the
-            middle.
+          <p className="mt-6 max-w-[480px] text-lg leading-[1.6] text-white/[0.60]">
+            Store on Walrus. Verify on Sui. Monetize without middlemen.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <WalletConnectButton />
-            <Button variant="outline" size="lg">
-              <Link href="/feed">Explore Feed</Link>
-            </Button>
-          </div>
-          <div className="mt-16 w-full max-w-5xl rounded-lg border border-outline-soft bg-surface-container p-2 shadow-primary-soft">
-            <div className="technical-grid relative aspect-[16/8] overflow-hidden rounded-md border border-outline-soft bg-surface-low">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="grid w-full max-w-3xl grid-cols-1 gap-4 px-6 sm:grid-cols-3">
-                  {[
-                    { label: "OpenAI", icon: Bot },
-                    { label: "Walrus", icon: Database },
-                    { label: "Sui", icon: Verified }
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={item.label}
-                        className="flex aspect-square flex-col items-center justify-center rounded-lg border border-outline-soft bg-surface-container/80"
-                      >
-                        <Icon className="mb-3 h-8 w-8 text-primary" />
-                        <span className="font-mono text-xs uppercase text-on-muted">
-                          {item.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/upload"
+              className="border border-white/[0.08] bg-[#111111] px-5 py-3 text-sm font-medium text-white/[0.90] transition-colors duration-200 hover:border-[#6FBCF0]"
+            >
+              Upload
+            </Link>
+            <Link
+              href="/feed"
+              className="border border-white/[0.08] bg-[#111111] px-5 py-3 text-sm font-medium text-white/[0.90] transition-colors duration-200 hover:border-[#6FBCF0]"
+            >
+              Explore Feed
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="container-grid border-t border-outline-soft py-20">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
+      <section className="border-t border-white/[0.08]">
+        <div className="mx-auto w-[min(100%-2rem,1200px)] py-20">
+          <div className="mb-10 max-w-2xl">
+            <p className="font-mono text-xs uppercase tracking-[0.05em] text-white/[0.60]">
+              How it works
+            </p>
+            <h2 className="mt-3 text-2xl font-medium text-white/[0.90]">
+              A direct path from upload to ownership.
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
               <article
                 key={feature.title}
-                className={`group relative overflow-hidden rounded-lg border border-outline-soft bg-surface-container p-6 transition-colors hover:border-primary/50 ${
-                  feature.wide ? "md:col-span-8" : "md:col-span-4"
-                }`}
+                  className="border border-white/[0.08] bg-[#111111] p-6 transition-colors duration-200 hover:border-white/[0.15]"
               >
-                <Icon className="mb-5 h-8 w-8 text-primary" />
-                <h3 className="text-2xl font-semibold">{feature.title}</h3>
-                <p className="mt-3 max-w-lg text-sm leading-6 text-on-muted">
+                  <Icon className="mb-8 h-6 w-6 stroke-[1.5] text-white/[0.60]" />
+                  <h3 className="text-lg font-medium text-white/[0.90]">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-[1.6] text-white/[0.60]">
                   {feature.body}
                 </p>
-                <div className="absolute -bottom-10 -right-8 text-[120px] font-black text-white/[0.02]">
-                  {feature.title.slice(0, 2)}
-                </div>
               </article>
+            );
+          })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/[0.08] bg-[#111111]">
+        <div className="mx-auto grid w-[min(100%-2rem,1200px)] grid-cols-2 md:grid-cols-4">
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
+                className="flex flex-col items-center border-white/[0.08] px-4 py-10 text-center max-md:border-b max-md:odd:border-r md:border-r md:last:border-r-0"
+              >
+                <Icon className="mb-4 h-5 w-5 stroke-[1.5] text-white/[0.60]" />
+                <div className="text-base font-medium text-white/[0.90]">
+                  {item.value}
+                </div>
+                <div className="mt-2 font-mono text-xs uppercase tracking-[0.05em] text-white/[0.60]">
+                  {item.label}
+                </div>
+              </div>
             );
           })}
         </div>
       </section>
 
-      <section className="border-y border-outline-soft bg-surface-low py-14">
-        <div className="container-grid grid grid-cols-2 gap-8 md:grid-cols-4">
-          {stats.map(([value, label]) => (
-            <div key={label} className="text-center">
-              <div className="text-4xl font-bold text-primary">{value}</div>
-              <div className="mt-2 font-mono text-xs uppercase tracking-wider text-on-muted">
-                {label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="container-grid py-20 text-center">
-        <h2 className="text-4xl font-bold">Ready to reclaim your content?</h2>
-        <p className="mx-auto mt-4 max-w-xl text-on-muted">
-          Start with an upload, see AI tags, store the bundle on Walrus, and
-          mint the content object for the feed.
+      <section className="mx-auto w-[min(100%-2rem,1200px)] py-24">
+        <h2 className="text-2xl font-medium text-white/[0.90]">
+          Ready to reclaim your content?
+        </h2>
+        <p className="mt-4 max-w-xl text-base leading-[1.6] text-white/[0.60]">
+          Start with an upload. Store the bundle on Walrus.
+          <br />
+          Mint the content object for the feed.
         </p>
-        <div className="mt-8 flex justify-center">
-          <Button size="lg">
-            <Link href="/upload">Open Upload Tool</Link>
-          </Button>
-        </div>
+        <Link
+          href="/upload"
+          className="mt-8 inline-flex border border-white/[0.08] bg-[#111111] px-5 py-3 text-sm font-medium text-white/[0.90] transition-colors duration-200 hover:border-[#6FBCF0]"
+        >
+          Open Upload Tool
+        </Link>
       </section>
 
-      <footer className="border-t border-outline-soft py-8">
-        <div className="container-grid flex flex-col justify-between gap-4 text-sm text-on-muted md:flex-row">
+      <footer className="border-t border-white/[0.08] py-8">
+        <div className="mx-auto grid w-[min(100%-2rem,1200px)] gap-4 font-mono text-xs text-white/[0.60] md:grid-cols-3">
           <span className="font-mono">SuiStream / 2026</span>
-          <span>Powered by Walrus, Sui, Tatum, and OpenAI</span>
-          <span className="font-mono">Mainnet configuration required</span>
+          <span className="md:text-center">
+            Powered by Walrus, Sui, Tatum, and OpenAI
+          </span>
+          <span className="md:text-right">Mainnet configuration required</span>
         </div>
       </footer>
     </main>
