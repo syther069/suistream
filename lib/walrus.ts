@@ -50,7 +50,7 @@ export async function uploadMediaAndMetadata(input: {
 }
 
 export function getBlobUrl(blobId: string) {
-  return `${WALRUS_AGGREGATOR_URL}/v1/blobs/${blobId}`;
+  return `${WALRUS_AGGREGATOR_URL}/${blobId}`;
 }
 
 export async function getBlob(blobId: string) {

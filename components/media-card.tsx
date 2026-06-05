@@ -7,7 +7,6 @@ import { TipModal } from "@/components/TipModal";
 import type { MediaContent } from "@/lib/types";
 import { cn, shortenAddress } from "@/lib/utils";
 
-
 export function MediaCard({ item }: { item: MediaContent }) {
   return (
     <article className="masonry-item overflow-hidden rounded-lg border border-outline-soft bg-surface-container transition-colors hover:border-primary/50">
@@ -18,10 +17,16 @@ export function MediaCard({ item }: { item: MediaContent }) {
         )}
       >
         <img
-          src={`https://aggregator.walrus.space/v1/${item.mediaBlobId}`}
+          src={`/api/walrus/${item.mediaBlobId}`}
           alt={item.title}
-          style={{ width:'100%', height:'220px', objectFit:'cover', borderRadius:'8px 8px 0 0' }}
-          onError={(e) => { e.currentTarget.style.display='none' }}
+          style={{
+            width: '100%',
+            height: '220px',
+            objectFit: 'cover',
+            borderRadius: '8px 8px 0 0',
+            backgroundColor: '#1a1a1a'
+          }}
+          onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
         <div className="absolute inset-0 flex items-end bg-gradient-to-t from-background/90 via-transparent to-transparent p-4 opacity-0 transition-opacity group-hover:opacity-100">
           <div className="flex flex-wrap gap-2">

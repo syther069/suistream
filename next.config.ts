@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false,
   typedRoutes: false,
   images: {
     remotePatterns: [
@@ -10,6 +11,14 @@ const nextConfig: NextConfig = {
         pathname: "/v1/**"
       }
     ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/walrus-proxy/:path*",
+        destination: "https://aggregator.walrus.space/:path*"
+      }
+    ];
   }
 };
 

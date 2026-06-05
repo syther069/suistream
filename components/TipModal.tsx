@@ -10,7 +10,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { CheckCircle2, ExternalLink, HandCoins, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getSuiExplorerTransactionUrl } from "@/lib/config";
+import { getSuiExplorerTransactionUrl, PACKAGE_ID } from "@/lib/config";
 import { cn, shortenAddress } from "@/lib/utils";
 
 type TokenSymbol = "SUI" | "USDC";
@@ -87,11 +87,10 @@ function smallestUnitsFromTokenAmount(tokenAmount: number, decimals: number) {
 }
 
 /**
- * Build a direct SUI transfer: split from gas coin, transfer to creator.
- * No contract interaction — just a plain coin transfer.
+ * Build a SUI tip call to the smart contract: split from gas coin, call tip_creator.
  */
-function buildSuiTransferTransaction(input: {
-  creatorAddress: string;
+function buildSuiTipTransaction(input: {
+  contentObjectId: string;
   amount: bigint;
 }) {
   const tx = new Transaction();
@@ -99,8 +98,11 @@ function buildSuiTransferTransaction(input: {
   // Split the exact tip amount from the gas coin
   const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(input.amount)]);
 
-  // Transfer directly to the creator's wallet address
-  tx.transferObjects([coin], tx.pure.address(input.creatorAddress));
+  // Call the Move smart contract tip_creator method
+  tx.moveCall({
+    target: `${PACKAGE_ID}::content::tip_creator`,
+    arguments: [tx.object(input.contentObjectId), coin]
+  });
 
   return tx;
 }
@@ -222,9 +224,7 @@ export function TipModal({
     label: string;
   } | null>(null);
 
-  // Keep contentObjectId referenced so ESLint doesn't flag it as unused
-  // (it's passed in but we no longer need it for the direct-transfer approach)
-  void contentObjectId;
+  // contentObjectId is used to call the tip_creator method in the SUI tipping logic below
 
   const token = useMemo(
     () => TOKENS.find((option) => option.symbol === selectedToken) ?? TOKENS[0],
@@ -315,9 +315,13 @@ export function TipModal({
       let transaction: Transaction;
 
       if (token.symbol === "SUI") {
-        // SUI: split from gas coin and transfer directly to creator
-        transaction = buildSuiTransferTransaction({
-          creatorAddress,
+        if (!contentObjectId) {
+          setError("Content object ID is required to process tip.");
+          return;
+        }
+        // SUI: split from gas coin and call tip_creator on the content object
+        transaction = buildSuiTipTransaction({
+          contentObjectId,
           amount
         });
       } else {

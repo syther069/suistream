@@ -67,7 +67,7 @@ function getTatumApiKey() {
 }
 
 async function suiRpc<T>(method: string, params: unknown[]): Promise<T> {
-  const response = await fetch(TATUM_SUI_RPC_URL, {
+  let response = await fetch(TATUM_SUI_RPC_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -81,12 +81,26 @@ async function suiRpc<T>(method: string, params: unknown[]): Promise<T> {
     })
   });
 
+  if (response.status === 429) {
+    console.warn("[RPC Proxy] Tatum rate limited. Falling back to public node.");
+    response = await fetch("https://fullnode.mainnet.sui.io:443", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method,
+        params
+      })
+    });
+  }
+
   const payload = (await response.json()) as RpcSuccess<T> | RpcFailure;
 
   if (!response.ok || "error" in payload) {
     const message =
       "error" in payload
-        ? payload.error.message ?? `${method} failed.`
+        ? payload.error?.message ?? `${method} failed.`
         : `${method} failed with status ${response.status}.`;
     throw new Error(message);
   }
@@ -124,7 +138,7 @@ async function fetchMetadata(metadataBlobId: string): Promise<MetadataJson> {
 
   try {
     const response = await fetch(
-      `${WALRUS_AGGREGATOR_URL}/v1/blobs/${metadataBlobId}`
+      `${WALRUS_AGGREGATOR_URL}/${metadataBlobId}`
     );
     if (!response.ok) {
       return {};
@@ -164,7 +178,7 @@ async function getBlobContentLength(blobId: string) {
   }
 
   try {
-    const response = await fetch(`${WALRUS_AGGREGATOR_URL}/v1/blobs/${blobId}`, {
+    const response = await fetch(`${WALRUS_AGGREGATOR_URL}/${blobId}`, {
       method: "HEAD"
     });
     const value = response.headers.get("Content-Length");
@@ -197,7 +211,7 @@ async function toOwnedContent(object: SuiObjectResponse): Promise<OwnedContent |
       metadata.description || stringField(fields, "description") || "No description",
     creatorAddress: stringField(fields, "creator"),
     createdAt: new Date(numberField(fields, "created_at")).toISOString(),
-    imageUrl: `https://aggregator.walrus.space/v1/blobs/${mediaBlobId}`,
+    imageUrl: `${WALRUS_AGGREGATOR_URL}/${mediaBlobId}`,
     tags: metadata.tags ?? [],
     moderationStatus: metadata.moderationStatus ?? "approved",
     contentHash: stringField(fields, "content_hash"),

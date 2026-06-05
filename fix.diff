@@ -1,0 +1,613 @@
+diff --git a/.env.example b/.env.example
+index 8048b6f..3d38ae0 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,5 +1,7 @@
+ TATUM_API_KEY=
++# Provide either OPENAI_API_KEY or GROQ_API_KEY for AI moderation
+ OPENAI_API_KEY=
++GROQ_API_KEY=
+ NEXT_PUBLIC_SUI_NETWORK=mainnet
+ NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus-testnet.walrus.space
+ NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus-testnet.walrus.space
+diff --git a/app/api/moderate/route.ts b/app/api/moderate/route.ts
+index 73c2da1..18825c0 100644
+--- a/app/api/moderate/route.ts
++++ b/app/api/moderate/route.ts
+@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
+       title: typeof title === "string" ? title : undefined,
+       description: typeof description === "string" ? description : undefined
+     });
+-
+     return NextResponse.json(analysis);
+   } catch (error: unknown) {
+     const errorMessage = error instanceof Error ? error.message : "AI analysis failed unexpectedly.";
+@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
+ 
+     // Determine appropriate status code and message
+     let status = 502; // Bad Gateway for third-party API issues
+-    let errorType = "OpenAI request failed";
++    let errorType = "AI request failed";
+ 
+     const errStatus = error && typeof error === "object" && "status" in error
+       ? (error as { status: unknown }).status
+@@ -46,7 +45,8 @@ export async function POST(request: NextRequest) {
+       : undefined;
+ 
+     const isMissingKey =
+-      errorMessage.includes("OpenAI API key missing") ||
++      errorMessage.includes("Neither GROQ_API_KEY nor OPENAI_API_KEY") ||
++      errorMessage.includes("missing") ||
+       errorMessage.includes("API key detected: false");
+ 
+     const is429 =
+@@ -69,13 +69,13 @@ export async function POST(request: NextRequest) {
+ 
+     if (isMissingKey) {
+       status = 500;
+-      errorType = "OpenAI API key missing";
++      errorType = "AI API key missing";
+     } else if (is429) {
+       status = 429;
+-      errorType = "OpenAI quota exceeded";
++      errorType = "AI quota exceeded";
+     } else if (is401) {
+       status = 401;
+-      errorType = "OpenAI authentication failed";
++      errorType = "AI authentication failed";
+     }
+ 
+     return NextResponse.json(
+@@ -87,4 +87,3 @@ export async function POST(request: NextRequest) {
+     );
+   }
+ }
+-
+diff --git a/app/api/sui-rpc/route.ts b/app/api/sui-rpc/route.ts
+index 2f6d1cf..f0529f7 100644
+--- a/app/api/sui-rpc/route.ts
++++ b/app/api/sui-rpc/route.ts
+@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
+   }
+ 
+   const body = await request.text();
+-  const response = await fetch(TATUM_SUI_RPC_URL, {
++  let response = await fetch(TATUM_SUI_RPC_URL, {
+     method: "POST",
+     headers: {
+       "Content-Type": "application/json",
+@@ -22,6 +22,17 @@ export async function POST(request: NextRequest) {
+     body
+   });
+ 
++  if (response.status === 429) {
++    console.warn("[RPC Proxy] Tatum rate limited (429). Falling back to public Sui RPC node.");
++    response = await fetch("https://fullnode.mainnet.sui.io:443", {
++      method: "POST",
++      headers: {
++        "Content-Type": "application/json"
++      },
++      body
++    });
++  }
++
+   return new NextResponse(await response.text(), {
+     status: response.status,
+     headers: {
+diff --git a/app/feed/page.tsx b/app/feed/page.tsx
+index b92b506..b20adf5 100644
+--- a/app/feed/page.tsx
++++ b/app/feed/page.tsx
+@@ -5,7 +5,7 @@ import { Loader2, RefreshCw } from "lucide-react";
+ import { FeedGrid } from "@/components/feed-grid";
+ import { SiteHeader } from "@/components/site-header";
+ import { Button } from "@/components/ui/button";
+-import { PACKAGE_ID } from "@/lib/config";
++import { PACKAGE_ID, WALRUS_AGGREGATOR_URL } from "@/lib/config";
+ 
+ import { useSuiClient } from "@mysten/dapp-kit";
+ import type { MediaContent, ModerationStatus } from "@/lib/types";
+@@ -87,7 +87,7 @@ function mapContentCreatedEvent(
+     "FEED ITEM blobId:",
+     blobId,
+     "URL:",
+-    `https://aggregator.walrus.space/v1/${blobId}`
++    `${WALRUS_AGGREGATOR_URL}/v1/blobs/${blobId}`
+   );
+   const metadataBlobId =
+     stringValue(fields.metadata_blob_id) ||
+@@ -120,7 +120,7 @@ function mapContentCreatedEvent(
+     creator: creator.slice(0, 10),
+     creatorAddress: creator,
+     createdAt: new Date(numberValue(timestamp)).toISOString(),
+-    imageUrl: `https://aggregator.walrus.space/v1/${blobId}`,
++    imageUrl: `${WALRUS_AGGREGATOR_URL}/v1/blobs/${blobId}`,
+     aspect: "landscape",
+     tags: stringArrayValue(meta.tags || fields.tags),
+     moderationStatus: moderationStatusValue(
+@@ -256,7 +256,7 @@ export default function FeedPage() {
+ 
+         try {
+           const res = await fetch(
+-            `https://aggregator.walrus.space/v1/blobs/${metadataBlobId}`
++            `${WALRUS_AGGREGATOR_URL}/v1/blobs/${metadataBlobId}`
+           );
+           if (res.ok) {
+             const json = (await res.json()) as Record<string, unknown>;
+@@ -297,7 +297,7 @@ export default function FeedPage() {
+ 
+           return mapContentCreatedEvent(event, objFields, metadata);
+         })
+-        .filter((item: MediaContent | null): item is MediaContent => item !== null);
++        .filter((item: MediaContent | null): item is MediaContent => item !== null && item.moderationStatus === "approved");
+ 
+       setItems(mapped);
+     } catch (caught) {
+diff --git a/components/TipModal.tsx b/components/TipModal.tsx
+index 52d6a7c..2485724 100644
+--- a/components/TipModal.tsx
++++ b/components/TipModal.tsx
+@@ -10,7 +10,7 @@ import { Transaction } from "@mysten/sui/transactions";
+ import { CheckCircle2, ExternalLink, HandCoins, Loader2, X } from "lucide-react";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+-import { getSuiExplorerTransactionUrl } from "@/lib/config";
++import { getSuiExplorerTransactionUrl, PACKAGE_ID } from "@/lib/config";
+ import { cn, shortenAddress } from "@/lib/utils";
+ 
+ type TokenSymbol = "SUI" | "USDC";
+@@ -87,20 +87,32 @@ function smallestUnitsFromTokenAmount(tokenAmount: number, decimals: number) {
+ }
+ 
+ /**
+- * Build a direct SUI transfer: split from gas coin, transfer to creator.
+- * No contract interaction — just a plain coin transfer.
++ * Build a SUI tip: invoke smart contract if content ID is present (to emit events
++ * and update dashboard), fallback to direct transfer.
+  */
+-function buildSuiTransferTransaction(input: {
++function buildSuiTipTransaction(input: {
+   creatorAddress: string;
+   amount: bigint;
++  contentObjectId?: string;
+ }) {
+   const tx = new Transaction();
+ 
+   // Split the exact tip amount from the gas coin
+   const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(input.amount)]);
+ 
+-  // Transfer directly to the creator's wallet address
+-  tx.transferObjects([coin], tx.pure.address(input.creatorAddress));
++  if (input.contentObjectId && PACKAGE_ID) {
++    // Contract call to register the tip and emit event
++    tx.moveCall({
++      target: `${PACKAGE_ID}::content::tip_creator`,
++      arguments: [
++        tx.object(input.contentObjectId),
++        coin
++      ]
++    });
++  } else {
++    // Fallback: Transfer directly to the creator's wallet address
++    tx.transferObjects([coin], tx.pure.address(input.creatorAddress));
++  }
+ 
+   return tx;
+ }
+@@ -222,9 +234,7 @@ export function TipModal({
+     label: string;
+   } | null>(null);
+ 
+-  // Keep contentObjectId referenced so ESLint doesn't flag it as unused
+-  // (it's passed in but we no longer need it for the direct-transfer approach)
+-  void contentObjectId;
++
+ 
+   const token = useMemo(
+     () => TOKENS.find((option) => option.symbol === selectedToken) ?? TOKENS[0],
+@@ -315,10 +325,11 @@ export function TipModal({
+       let transaction: Transaction;
+ 
+       if (token.symbol === "SUI") {
+-        // SUI: split from gas coin and transfer directly to creator
+-        transaction = buildSuiTransferTransaction({
++        // SUI: call contract if content ID is present, else transfer directly
++        transaction = buildSuiTipTransaction({
+           creatorAddress,
+-          amount
++          amount,
++          contentObjectId
+         });
+       } else {
+         // USDC: fetch coins, merge, split, transfer to creator
+diff --git a/components/media-card.tsx b/components/media-card.tsx
+index f63d6da..9b651af 100644
+--- a/components/media-card.tsx
++++ b/components/media-card.tsx
+@@ -18,7 +18,7 @@ export function MediaCard({ item }: { item: MediaContent }) {
+         )}
+       >
+         <img
+-          src={`https://aggregator.walrus.space/v1/${item.mediaBlobId}`}
++          src={item.imageUrl || ""}
+           alt={item.title}
+           style={{ width:'100%', height:'220px', objectFit:'cover', borderRadius:'8px 8px 0 0' }}
+           onError={(e) => { e.currentTarget.style.display='none' }}
+diff --git a/lib/ai.ts b/lib/ai.ts
+index 055c412..f196bb9 100644
+--- a/lib/ai.ts
++++ b/lib/ai.ts
+@@ -1,4 +1,5 @@
+ import Groq from "groq-sdk";
++import OpenAI from "openai";
+ import type { AiAnalysis, ModerationStatus } from "@/lib/types";
+ 
+ function isModerationStatus(value: unknown): value is ModerationStatus {
+@@ -109,98 +110,187 @@ export async function analyzeImage(input: {
+   title?: string;
+   description?: string;
+ }): Promise<AiAnalysis> {
+- const groqApiKey = process.env.GROQ_API_KEY;
+-console.log(`[AI] API key detected: ${!!groqApiKey}`);
++  const groqApiKey = process.env.GROQ_API_KEY;
++  const openaiApiKey = process.env.OPENAI_API_KEY;
+ 
+-if (!groqApiKey) {
+-  const errorMsg = "GROQ_API_KEY missing";
+-  console.error(`[AI] ${errorMsg}`);
+-  throw new Error(errorMsg);
+-}
+-
+-const model = "meta-llama/llama-4-scout-17b-16e-instruct";
+-console.log(`[AI] Model being used: ${model}`);
+-
+-const groq = new Groq({
+-  apiKey: groqApiKey,
+-});
+-
+-  try {
+-       console.log("[AI] About to call Groq");
+-    const response = await groq.chat.completions.create({
+-      model,
+-      response_format: { type: "json_object" },
+-      max_tokens: 1024,
+-      messages: [
+-        {
+-          role: "user",
+-          content: [
+-            {
+-              type: "text",
+-              text: buildPrompt({
+-                title: input.title,
+-                description: input.description
+-              })
+-            },
+-            {
+-              type: "image_url",
+-              image_url: {
+-                url: `data:${input.mediaType};base64,${input.imageBase64}`
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    }, {
+-      timeout: 30_000
+-    });
+-
+-   console.log("[AI] Groq response received successfully");
+-
+-const messageContent = response.choices?.[0]?.message?.content;
+-
+-console.log("[AI] Raw Response:");
+-console.log(messageContent);
+-
+-if (!messageContent) {
+-  const errorMsg = "Groq returned an empty response content.";
+-  console.error(`[AI] ${errorMsg}`);
+-  throw new Error(errorMsg);
+-}
+-
+-const raw = JSON.parse(extractJson(messageContent));
++  if (!groqApiKey && !openaiApiKey) {
++    const errorMsg = "Neither GROQ_API_KEY nor OPENAI_API_KEY is configured.";
++    console.error(`[AI] ${errorMsg}`);
++    throw new Error(errorMsg);
++  }
+ 
+-console.log("[AI] Parsed JSON:");
+-console.log(raw);
++  if (groqApiKey) {
++    console.log("[AI] Using Groq API key for moderation.");
++    const model = "meta-llama/llama-4-scout-17b-16e-instruct";
++    console.log(`[AI] Model being used: ${model}`);
+ 
+-const parsed = toAiAnalysis(raw);
++    const groq = new Groq({
++      apiKey: groqApiKey,
++    });
+ 
+-if (!parsed) {
+-  console.error("[AI] Failed to map response.");
+-  console.error("[AI] Raw object:", raw);
++    try {
++      console.log("[AI] About to call Groq");
++      const response = await groq.chat.completions.create({
++        model,
++        response_format: { type: "json_object" },
++        max_tokens: 1024,
++        messages: [
++          {
++            role: "user",
++            content: [
++              {
++                type: "text",
++                text: buildPrompt({
++                  title: input.title,
++                  description: input.description
++                })
++              },
++              {
++                type: "image_url",
++                image_url: {
++                  url: `data:${input.mediaType};base64,${input.imageBase64}`
++                }
++              }
++            ]
++          }
++        ]
++      }, {
++        timeout: 30_000
++      });
++
++      console.log("[AI] Groq response received successfully");
++
++      const messageContent = response.choices?.[0]?.message?.content;
++
++      console.log("[AI] Raw Response:");
++      console.log(messageContent);
++
++      if (!messageContent) {
++        const errorMsg = "Groq returned an empty response content.";
++        console.error(`[AI] ${errorMsg}`);
++        throw new Error(errorMsg);
++      }
++
++      const raw = JSON.parse(extractJson(messageContent));
++
++      console.log("[AI] Parsed JSON:");
++      console.log(raw);
++
++      const parsed = toAiAnalysis(raw);
++
++      if (!parsed) {
++        console.error("[AI] Failed to map response.");
++        console.error("[AI] Raw object:", raw);
++
++        throw new Error(
++          "Failed to map Groq response to structured AI analysis format."
++        );
++      }
++
++      console.log("[AI] Final Parsed Analysis:");
++      console.log(parsed);
++
++      return parsed;
++    } catch (error: unknown) {
++      console.error("[AI] Request failure");
++      const errStatus = error && typeof error === "object" && "status" in error
++        ? (error as { status: unknown }).status
++        : undefined;
++      const errMessage = error instanceof Error
++        ? error.message
++        : error && typeof error === "object" && "message" in error
++          ? String((error as { message: unknown }).message)
++          : String(error);
++
++      console.error(`[AI] Error details: Status ${errStatus || "unknown"}, Message: ${errMessage}`);
++      throw error;
++    }
++  } else {
++    console.log("[AI] Using OpenAI API key for moderation.");
++    const model = "gpt-4o";
++    console.log(`[AI] Model being used: ${model}`);
+ 
+-  throw new Error(
+-    "Failed to map Groq response to structured AI analysis format."
+-  );
+-}
++    const openai = new OpenAI({
++      apiKey: openaiApiKey,
++    });
+ 
+-console.log("[AI] Final Parsed Analysis:");
+-console.log(parsed);
+-
+-return parsed;
+-  } catch (error: unknown) {
+-    console.error("[AI] Request failure");
+-    const errStatus = error && typeof error === "object" && "status" in error
+-      ? (error as { status: unknown }).status
+-      : undefined;
+-    const errMessage = error instanceof Error
+-      ? error.message
+-      : error && typeof error === "object" && "message" in error
+-        ? String((error as { message: unknown }).message)
+-        : String(error);
+-
+-    console.error(`[AI] Error details: Status ${errStatus || "unknown"}, Message: ${errMessage}`);
+-    throw error;
++    try {
++      console.log("[AI] About to call OpenAI");
++      const response = await openai.chat.completions.create({
++        model,
++        response_format: { type: "json_object" },
++        max_tokens: 1024,
++        messages: [
++          {
++            role: "user",
++            content: [
++              {
++                type: "text",
++                text: buildPrompt({
++                  title: input.title,
++                  description: input.description
++                })
++              },
++              {
++                type: "image_url",
++                image_url: {
++                  url: `data:${input.mediaType};base64,${input.imageBase64}`
++                }
++              }
++            ]
++          }
++        ]
++      }, {
++        timeout: 30_000
++      });
++
++      console.log("[AI] OpenAI response received successfully");
++
++      const messageContent = response.choices?.[0]?.message?.content;
++
++      console.log("[AI] Raw Response:");
++      console.log(messageContent);
++
++      if (!messageContent) {
++        const errorMsg = "OpenAI returned an empty response content.";
++        console.error(`[AI] ${errorMsg}`);
++        throw new Error(errorMsg);
++      }
++
++      const raw = JSON.parse(extractJson(messageContent));
++
++      console.log("[AI] Parsed JSON:");
++      console.log(raw);
++
++      const parsed = toAiAnalysis(raw);
++
++      if (!parsed) {
++        console.error("[AI] Failed to map response.");
++        console.error("[AI] Raw object:", raw);
++
++        throw new Error(
++          "Failed to map OpenAI response to structured AI analysis format."
++        );
++      }
++
++      console.log("[AI] Final Parsed Analysis:");
++      console.log(parsed);
++
++      return parsed;
++    } catch (error: unknown) {
++      console.error("[AI] Request failure");
++      const errStatus = error && typeof error === "object" && "status" in error
++        ? (error as { status: unknown }).status
++        : undefined;
++      const errMessage = error instanceof Error
++        ? error.message
++        : error && typeof error === "object" && "message" in error
++          ? String((error as { message: unknown }).message)
++          : String(error);
++
++      console.error(`[AI] Error details: Status ${errStatus || "unknown"}, Message: ${errMessage}`);
++      throw error;
++    }
+   }
+ }
+ 
+diff --git a/lib/sui-data.ts b/lib/sui-data.ts
+index 5c9a62d..beb9d5f 100644
+--- a/lib/sui-data.ts
++++ b/lib/sui-data.ts
+@@ -67,20 +67,33 @@ function getTatumApiKey() {
+ }
+ 
+ async function suiRpc<T>(method: string, params: unknown[]): Promise<T> {
+-  const response = await fetch(TATUM_SUI_RPC_URL, {
++  const requestBody = JSON.stringify({
++    jsonrpc: "2.0",
++    id: 1,
++    method,
++    params
++  });
++
++  let response = await fetch(TATUM_SUI_RPC_URL, {
+     method: "POST",
+     headers: {
+       "Content-Type": "application/json",
+       "X-API-Key": getTatumApiKey()
+     },
+-    body: JSON.stringify({
+-      jsonrpc: "2.0",
+-      id: 1,
+-      method,
+-      params
+-    })
++    body: requestBody
+   });
+ 
++  if (response.status === 429) {
++    console.warn("[suiRpc] Tatum rate limited (429). Falling back to public Sui RPC node.");
++    response = await fetch("https://fullnode.mainnet.sui.io:443", {
++      method: "POST",
++      headers: {
++        "Content-Type": "application/json"
++      },
++      body: requestBody
++    });
++  }
++
+   const payload = (await response.json()) as RpcSuccess<T> | RpcFailure;
+ 
+   if (!response.ok || "error" in payload) {
+@@ -197,7 +210,7 @@ async function toOwnedContent(object: SuiObjectResponse): Promise<OwnedContent |
+       metadata.description || stringField(fields, "description") || "No description",
+     creatorAddress: stringField(fields, "creator"),
+     createdAt: new Date(numberField(fields, "created_at")).toISOString(),
+-    imageUrl: `https://aggregator.walrus.space/v1/blobs/${mediaBlobId}`,
++    imageUrl: `${WALRUS_AGGREGATOR_URL}/v1/blobs/${mediaBlobId}`,
+     tags: metadata.tags ?? [],
+     moderationStatus: metadata.moderationStatus ?? "approved",
+     contentHash: stringField(fields, "content_hash"),
+diff --git a/next.config.ts b/next.config.ts
+index 2761112..b39212d 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -1,6 +1,7 @@
+ import type { NextConfig } from "next";
+ 
+ const nextConfig: NextConfig = {
++  reactStrictMode: false,
+   typedRoutes: false,
+   images: {
+     remotePatterns: [
+diff --git a/scripts/check-openai.ts b/scripts/check-openai.ts
+index 57ca80f..8a233ea 100644
+--- a/scripts/check-openai.ts
++++ b/scripts/check-openai.ts
+@@ -22,8 +22,8 @@ function getMediaType(path: string) {
+ }
+ 
+ async function main() {
+-  if (!process.env.OPENAI_API_KEY) {
+-    throw new Error("OPENAI_API_KEY is missing. Add it to .env.local first.");
++  if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY) {
++    throw new Error("Either OPENAI_API_KEY or GROQ_API_KEY must be configured in .env.local.");
+   }
+ 
+   if (!imagePath) {
+@@ -37,10 +37,10 @@ async function main() {
+   });
+ 
+   if (!result) {
+-    throw new Error(`OpenAI analysis unavailable for ${basename(imagePath)}.`);
++    throw new Error(`AI analysis unavailable for ${basename(imagePath)}.`);
+   }
+ 
+-  console.log("OpenAI moderation response:");
++  console.log("AI moderation response:");
+   console.log(JSON.stringify(result, null, 2));
+ }
+ 

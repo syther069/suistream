@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Determine appropriate status code and message
     let status = 502; // Bad Gateway for third-party API issues
-    let errorType = "OpenAI request failed";
+    let errorType = "AI request failed";
 
     const errStatus = error && typeof error === "object" && "status" in error
       ? (error as { status: unknown }).status
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     const isMissingKey =
       errorMessage.includes("OpenAI API key missing") ||
+      errorMessage.includes("Neither GROQ_API_KEY nor OPENAI_API_KEY is configured") ||
       errorMessage.includes("API key detected: false");
 
     const is429 =
@@ -69,13 +70,13 @@ export async function POST(request: NextRequest) {
 
     if (isMissingKey) {
       status = 500;
-      errorType = "OpenAI API key missing";
+      errorType = "AI API key missing";
     } else if (is429) {
       status = 429;
-      errorType = "OpenAI quota exceeded";
+      errorType = "AI quota exceeded";
     } else if (is401) {
       status = 401;
-      errorType = "OpenAI authentication failed";
+      errorType = "AI authentication failed";
     }
 
     return NextResponse.json(

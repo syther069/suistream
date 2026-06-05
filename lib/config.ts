@@ -2,8 +2,7 @@ export const SUI_NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK ?? "mainnet";
 
 export const TATUM_SUI_RPC_URL = "https://sui-mainnet.gateway.tatum.io";
 
-export const WALRUS_AGGREGATOR_URL =
-  process.env.NEXT_PUBLIC_WALRUS_AGGREGATOR ?? "https://aggregator.walrus.space";
+export const WALRUS_AGGREGATOR_URL = "/api/walrus";
 
 export const WALRUS_PUBLISHER_URL =
   process.env.NEXT_PUBLIC_WALRUS_PUBLISHER ?? "https://publisher.walrus.space";
@@ -21,7 +20,6 @@ export function assertMainnet() {
     );
   }
 }
-
 export function getSuiExplorerTransactionUrl(digest: string) {
   return `${SUI_EXPLORER_BASE_URL}/txblock/${digest}?network=mainnet`;
 }

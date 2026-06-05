@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import OpenAI from "openai";
 import type { AiAnalysis, ModerationStatus } from "@/lib/types";
 
 function isModerationStatus(value: unknown): value is ModerationStatus {
@@ -109,28 +110,26 @@ export async function analyzeImage(input: {
   title?: string;
   description?: string;
 }): Promise<AiAnalysis> {
- const groqApiKey = process.env.GROQ_API_KEY;
-console.log(`[AI] API key detected: ${!!groqApiKey}`);
+  const groqApiKey = process.env.GROQ_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  
+  if (!groqApiKey && !openaiApiKey) {
+    throw new Error("Neither GROQ_API_KEY nor OPENAI_API_KEY is configured.");
+  }
 
-if (!groqApiKey) {
-  const errorMsg = "GROQ_API_KEY missing";
-  console.error(`[AI] ${errorMsg}`);
-  throw new Error(errorMsg);
-}
+  if (groqApiKey) {
+    console.log(`[AI] Using Groq API`);
+    const model = "meta-llama/llama-4-scout-17b-16e-instruct";
+    
+    const groq = new Groq({
+      apiKey: groqApiKey,
+    });
 
-const model = "meta-llama/llama-4-scout-17b-16e-instruct";
-console.log(`[AI] Model being used: ${model}`);
-
-const groq = new Groq({
-  apiKey: groqApiKey,
-});
-
-  try {
-       console.log("[AI] About to call Groq");
-    const response = await groq.chat.completions.create({
-      model,
-      response_format: { type: "json_object" },
-      max_tokens: 1024,
+    try {
+      const response = await groq.chat.completions.create({
+        model,
+        response_format: { type: "json_object" },
+        max_tokens: 1024,
       messages: [
         {
           role: "user",
@@ -202,5 +201,62 @@ return parsed;
     console.error(`[AI] Error details: Status ${errStatus || "unknown"}, Message: ${errMessage}`);
     throw error;
   }
+} else if (openaiApiKey) {
+  console.log(`[AI] Using OpenAI API`);
+  const openai = new OpenAI({
+    apiKey: openaiApiKey,
+  });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: buildPrompt({
+                title: input.title,
+                description: input.description
+              })
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${input.mediaType};base64,${input.imageBase64}`
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    const messageContent = response.choices?.[0]?.message?.content;
+
+    if (!messageContent) {
+      throw new Error("OpenAI returned an empty response content.");
+    }
+
+    const raw = JSON.parse(extractJson(messageContent));
+    const parsed = toAiAnalysis(raw);
+
+    if (!parsed) {
+      throw new Error(
+        "Failed to map OpenAI response to structured AI analysis format."
+      );
+    }
+
+    return parsed;
+  } catch (error: unknown) {
+    console.error("[AI] OpenAI Request failure", error);
+    throw error;
+  }
+}
+
+// Should be unreachable due to check at start of function
+throw new Error("No API key configured");
 }
 

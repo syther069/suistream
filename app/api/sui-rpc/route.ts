@@ -13,14 +13,23 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.text();
-  const response = await fetch(TATUM_SUI_RPC_URL, {
+  let response = await fetch(TATUM_SUI_RPC_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": process.env.TATUM_API_KEY
+      "x-api-key": process.env.TATUM_API_KEY || ""
     },
     body
   });
+
+  if (response.status === 429) {
+    console.warn("[RPC Proxy] Tatum rate limited. Falling back to public node.");
+    response = await fetch("https://fullnode.mainnet.sui.io:443", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+  }
 
   return new NextResponse(await response.text(), {
     status: response.status,

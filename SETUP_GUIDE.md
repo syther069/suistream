@@ -24,7 +24,7 @@ Add:
 TATUM_API_KEY=
 OPENAI_API_KEY=
 NEXT_PUBLIC_SUI_NETWORK=mainnet
-NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
+NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-mainnet.walrus.space
 NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 NEXT_PUBLIC_PACKAGE_ID=TODO_REDEPLOY_TO_MAINNET
 ```
@@ -191,7 +191,7 @@ Installed packages:
 Mainnet endpoints:
 
 ```txt
-NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
+NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-mainnet.walrus.space
 NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 ```
 
@@ -296,7 +296,7 @@ Steps:
 [ ] Add TATUM_API_KEY
 [ ] Add OPENAI_API_KEY
 [ ] Set NEXT_PUBLIC_SUI_NETWORK=mainnet
-[ ] Set NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
+[ ] Set NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-mainnet.walrus.space
 [ ] Set NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 [ ] Deploy Move package to Sui mainnet
 [ ] Add NEXT_PUBLIC_PACKAGE_ID

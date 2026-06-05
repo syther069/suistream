@@ -22,8 +22,8 @@ function getMediaType(path: string) {
 }
 
 async function main() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is missing. Add it to .env.local first.");
+  if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY) {
+    throw new Error("Either OPENAI_API_KEY or GROQ_API_KEY is missing. Add one to .env.local first.");
   }
 
   if (!imagePath) {
@@ -37,10 +37,10 @@ async function main() {
   });
 
   if (!result) {
-    throw new Error(`OpenAI analysis unavailable for ${basename(imagePath)}.`);
+    throw new Error(`AI analysis unavailable for ${basename(imagePath)}.`);
   }
 
-  console.log("OpenAI moderation response:");
+  console.log("AI moderation response:");
   console.log(JSON.stringify(result, null, 2));
 }
 

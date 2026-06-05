@@ -21,7 +21,7 @@ Copy `.env.example` to `.env.local`:
 TATUM_API_KEY=
 OPENAI_API_KEY=
 NEXT_PUBLIC_SUI_NETWORK=mainnet
-NEXT_PUBLIC_WALRUS_AGGREGATOR=https://aggregator.walrus.space
+NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=https://aggregator.walrus-mainnet.walrus.space
 NEXT_PUBLIC_WALRUS_PUBLISHER=https://publisher.walrus.space
 NEXT_PUBLIC_PACKAGE_ID=TODO_REDEPLOY_TO_MAINNET
 ```
