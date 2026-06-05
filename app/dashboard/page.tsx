@@ -6,8 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import {
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
   CloudUpload,
   Compass,
   Database,
@@ -120,24 +118,9 @@ function ContentTile({ content }: { content: OwnedContent }) {
 
 export default function DashboardPage() {
   const account = useCurrentAccount();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("suistream.sidebarCollapsed");
-    if (stored) {
-      setSidebarCollapsed(stored === "true");
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      "suistream.sidebarCollapsed",
-      String(sidebarCollapsed)
-    );
-  }, [sidebarCollapsed]);
 
   useEffect(() => {
     const address = account?.address;
@@ -199,38 +182,18 @@ export default function DashboardPage() {
     }, 0n);
   }, [data?.revenue]);
 
-  const shellOffset = sidebarCollapsed ? "lg:ml-20" : "lg:ml-64";
-
   return (
     <main className="min-h-screen bg-surface">
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-outline-soft bg-surface-container px-4 py-6 transition-[width] duration-300 lg:flex",
-          sidebarCollapsed ? "w-20" : "w-64"
-        )}
-      >
-        <div className="mb-10 flex items-center justify-between gap-3 px-2">
+      <aside className="sidebar fixed left-0 top-0 z-40 flex h-screen w-[200px] flex-col border-r border-outline-soft bg-surface-container px-4 py-6">
+        <div className="mb-10 px-2">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
               <Database className="h-4 w-4" />
             </div>
-            {!sidebarCollapsed ? (
-              <span className="truncate text-xl font-semibold text-primary">
-                SuiStream
-              </span>
-            ) : null}
+            <span className="truncate text-xl font-semibold text-primary">
+              SuiStream
+            </span>
           </Link>
-          <button
-            className="focus-ring rounded-lg border border-outline-soft bg-surface-high p-2 text-on-muted hover:text-primary"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -247,50 +210,43 @@ export default function DashboardPage() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg p-3 text-on-muted hover:bg-surface-high hover:text-primary",
                   item.href === "/dashboard" &&
-                    "bg-surface-high font-semibold text-primary",
-                  sidebarCollapsed && "justify-center"
+                    "bg-surface-high font-semibold text-primary"
                 )}
-                title={sidebarCollapsed ? item.label : undefined}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                {!sidebarCollapsed ? item.label : null}
+                {item.label}
               </Link>
             );
           })}
         </nav>
 
         <div className="rounded-lg border border-outline-soft bg-surface-low p-3">
-          {!sidebarCollapsed ? (
-            <>
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="text-on-muted">Walrus Storage</span>
-                <span className="font-mono text-primary">
-                  {data ? `${data.storagePercent.toFixed(1)}%` : "0%"}
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded bg-surface-high">
-                <div
-                  className="h-full bg-primary"
-                  style={{ width: `${data?.storagePercent ?? 0}%` }}
-                />
-              </div>
-            </>
-          ) : (
-            <Database className="mx-auto h-5 w-5 text-primary" />
-          )}
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-on-muted">Walrus Storage</span>
+            <span className="font-mono text-primary">
+              {data ? `${data.storagePercent.toFixed(1)}%` : "0%"}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded bg-surface-high">
+            <div
+              className="h-full bg-primary"
+              style={{ width: `${data?.storagePercent ?? 0}%` }}
+            />
+          </div>
         </div>
 
-        <div className="mt-4 border-t border-outline-soft pt-4">
-          <WalletConnectButton compact={sidebarCollapsed} />
+        <div className="mt-4 shrink-0 overflow-hidden border-t border-outline-soft pt-4">
+          <WalletConnectButton />
         </div>
       </aside>
 
-      <section
-        className={cn(
-          "container-grid py-8 transition-[margin,width] duration-300",
-          shellOffset
-        )}
-      >
+      <nav className="topnav">
+        <Link href="/feed">Explore</Link>
+        <Link href="/upload">Upload</Link>
+        <Link href="/dashboard">Dashboard</Link>
+      </nav>
+
+      <section className="main-content">
         <header className="mb-8 flex flex-col justify-between gap-4 border-b border-outline-soft pb-6 md:flex-row md:items-end">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">
@@ -525,6 +481,42 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      <style jsx>{`
+        .topnav {
+          display: none;
+          gap: 1rem;
+          padding: 0.75rem 1rem;
+          border-bottom: 0.5px solid var(--color-border-tertiary);
+        }
+
+        .main-content {
+          min-width: 0;
+          margin-left: 200px;
+          padding: 2rem 3rem;
+        }
+
+        @media (max-width: 768px) {
+          .sidebar {
+            display: none;
+          }
+
+          .topnav {
+            display: flex;
+          }
+
+          .main-content {
+            margin-left: 0;
+            padding: 1rem;
+          }
+        }
+
+        @media (min-width: 769px) {
+          .topnav {
+            display: none;
+          }
+        }
+      `}</style>
     </main>
   );
 }
