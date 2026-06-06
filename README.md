@@ -78,10 +78,10 @@ After adding a real Tatum key:
 npm run check:tatum -- 0xYOUR_MAINNET_ADDRESS
 ```
 
-After adding a real OpenAI key:
+After adding a real groq AI key:
 
 ```bash
-npm run check:openai -- ./image.png
+npm run check:groq -- ./image.png
 ```
 
 ## Move Contract
